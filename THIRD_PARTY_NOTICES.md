@@ -59,7 +59,7 @@ MIT, MIT, NCSA, and BSD-3-Clause can be distributed together if each notice is k
 
 The PLaMo Community License is a separate contract. Shipping the extension under MIT does not put the weights under MIT. The zip does not contain the weights. A person who downloads them from Hugging Face is using PFN's copy.
 
-Article 4 requires a copy of the agreement (bundled), the words "Built with PLaMo" (in the UI, manifest description, and docs), "PLaMo" in the name of an AI model created from the materials (this extension does not create a new model), and compliance with any other license on a component. "Built with PLaMo" is attribution required by that article.
+Article 4 requires a copy of the agreement (bundled), the words "Built with PLaMo" (in the UI, the store's detailed description, and the docs), "PLaMo" in the name of an AI model created from the materials (this extension does not create a new model), and compliance with any other license on a component. "Built with PLaMo" is attribution required by that article. The store summary and the manifest description do not carry it.
 
 Article 5 requires a public translation to be identified as model output. The UI labels PLaMo output as machine translation.
 

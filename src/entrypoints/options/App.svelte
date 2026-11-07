@@ -16,7 +16,7 @@
     requestQualitySample,
   } from '@/shared/messages';
   import type { QualitySample } from '@/shared/quality';
-  import { PLAMO_OFFICIAL_LINKS } from '@/shared/plamo-license';
+  import { PLAMO_OFFICIAL_LINKS, PROJECT_LINKS } from '@/shared/plamo-license';
   import type { IdleMinutes, Settings, SettingsPatch, TierPreference } from '@/shared/settings';
   import { isIdleMinutes, isTierPreference } from '@/shared/settings';
   import type { TargetLanguage } from '@/shared/languages';
@@ -39,6 +39,7 @@
   };
 
   const officialLinks = PLAMO_OFFICIAL_LINKS;
+  const projectLinks = PROJECT_LINKS;
 
   let settings = $state<Settings | null>(null);
   let settingsError = $state<SettingsError>(null);
@@ -395,6 +396,14 @@
     <h2>{t('privacyHeading')}</h2>
     <p>{t('privacyBody')}</p>
     <p class="muted">{t('privacyDestinations')}</p>
+    <ul class="links">
+      <li>
+        <a href={projectLinks.privacy} target="_blank" rel="noreferrer">{t('privacyPolicyLink')}</a>
+      </li>
+      <li>
+        <a href={projectLinks.source} target="_blank" rel="noreferrer">{t('sourceCodeLink')}</a>
+      </li>
+    </ul>
   </section>
 
   <section class="panel">

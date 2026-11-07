@@ -162,6 +162,12 @@
   "privacyDestinations": {
     "message": "拡張機能自身の通信はモデルの取得だけです。接続は huggingface.co から始まり、Hugging Face の CDN へ転送されます。本文は含めません。言語パックは Chrome 自身が取得します。"
   },
+  "privacyPolicyLink": {
+    "message": "プライバシーポリシー"
+  },
+  "sourceCodeLink": {
+    "message": "ソースコード"
+  },
   "licensesHeading": {
     "message": "ライセンス"
   },

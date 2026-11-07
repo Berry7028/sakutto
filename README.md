@@ -6,7 +6,11 @@ The extension is free and open source (MIT). It has no ads and no paid features.
 
 ## Install
 
-The Chrome Web Store listing is not published yet. Until it is, install from source:
+Install Sakutto from the Chrome Web Store:
+
+https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl
+
+To build and load it yourself instead:
 
 1. Install Node.js 24 and pnpm 12.
 2. Clone this repository and run `pnpm install`.

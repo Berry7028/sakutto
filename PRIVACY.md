@@ -65,7 +65,7 @@ The extension has no account. The model download did not require a Hugging Face 
 
 ## Contact
 
-Questions about this policy can be opened as an issue at https://github.com/jammaru/sakutto/issues. The repository is https://github.com/jammaru/sakutto. This file does not invent a publisher legal name or a public email. If a Chrome Web Store listing is published later, that listing will show the contact used for the listing.
+Questions about this policy can be opened as an issue at https://github.com/jammaru/sakutto/issues. The repository is https://github.com/jammaru/sakutto. The Chrome Web Store listing is https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl. This file does not state a publisher legal name or a public email.
 
 # プライバシーポリシー
 
@@ -134,4 +134,4 @@ MIT の著作権表示にある `jammaru` はリポジトリ上の名前であ�
 
 ## 連絡先
 
-このポリシーについての質問は、https://github.com/jammaru/sakutto/issues の issue で受けます。リポジトリは https://github.com/jammaru/sakutto です。このファイルは、公開者の法的名称や公開メールを作りません。Chrome ウェブストアの掲載が後から出る場合、その掲載に使う連絡先は、その掲載に出ます。
+このポリシーについての質問は、https://github.com/jammaru/sakutto/issues の issue で受けます。リポジトリは https://github.com/jammaru/sakutto です。Chrome ウェブストアの掲載は https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl です。このファイルは、公開者の法的名称や公開メールを書きません。

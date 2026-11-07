@@ -6,7 +6,11 @@ Sakutto は、ウェブページを端末の中で翻訳する非公式の Chrom
 
 ## インストール
 
-Chrome ウェブストアの掲載は、まだ公開していません。公開までは、ソースからインストールしてください。
+Chrome ウェブストアからインストールできます。
+
+https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl
+
+自分でビルドして読み込む場合は、次の手順です。
 
 1. Node.js 24 と pnpm 12 を用意します。
 2. このリポジトリを取得し、`pnpm install` を実行します。

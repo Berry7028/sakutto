@@ -1,4 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { BENCH_PAGES } from '../scripts/bench/pages.ts';
@@ -85,15 +86,27 @@ describe('bench fixtures', () => {
     expect(problems).toEqual([]);
   });
 
-  it('checks in no live numbers and no announcement copy', () => {
+  it('keeps every checked-in run tied to a real commit', () => {
     const text = existsSync(historyFile) ? readFileSync(historyFile, 'utf8') : '';
     const { records } = parseHistory(text);
-    // A live row in this repo has to come from a real `pnpm bench:live` on a machine with
-    // the wasm build. Nothing in this tree can produce one, so a live record means someone
-    // typed it.
+    // A mock run measures the scheduler, so it carries no model rate. A live run is a
+    // measurement from `pnpm bench:live`, so it names a commit that exists in this
+    // repository and records the rate it measured.
     for (const record of records) {
-      expect(record.mode, `${record.run}/${record.page} is not a mock record`).toBe('mock');
-      expect(record.metrics.estimatedOutputTokensPerSecond).toBeNull();
+      const where = `${record.run}/${record.page}`;
+      expect(record.dirty, where).toBe(false);
+      expect(
+        execFileSync('git', ['cat-file', '-t', record.commit], { encoding: 'utf8' }).trim(),
+        where,
+      ).toBe('commit');
+      if (record.mode === 'mock') {
+        expect(record.metrics.estimatedOutputTokensPerSecond, where).toBeNull();
+      } else if (record.metrics.timedOut) {
+        // A page that hit the timeout never settles, so it has no rate to record.
+        expect(record.metrics.fullPageMs, where).toBeNull();
+      } else {
+        expect(record.metrics.estimatedOutputTokensPerSecond, where).not.toBeNull();
+      }
     }
   });
 

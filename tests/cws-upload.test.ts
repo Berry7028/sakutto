@@ -8,7 +8,6 @@ import {
   CWS_CLI_BIN,
   CWS_CLI_SPEC,
   DEFAULT_EXTENSION_ID,
-  DEFAULT_PUBLISHER_ID,
   REQUIRED_SECRET_NAMES,
   missingSecretNames,
   resolveStoreIds,
@@ -27,6 +26,7 @@ function env(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     CLIENT_ID: 'client-id-value',
     CLIENT_SECRET: clientSecret,
     REFRESH_TOKEN: refreshToken,
+    PUBLISHER_ID: 'publisher-id',
     GITHUB_TOKEN: 'ghs_should_not_be_forwarded',
     ...overrides,
   };
@@ -61,12 +61,16 @@ describe('Chrome Web Store CLI credentials', () => {
     }
     expect(resolveStoreIds(env())).toEqual({
       extensionId: DEFAULT_EXTENSION_ID,
-      publisherId: DEFAULT_PUBLISHER_ID,
+      publisherId: 'publisher-id',
     });
-    expect(resolveStoreIds(env({ EXTENSION_ID: '  abcdef  ', PUBLISHER_ID: '' }))).toEqual({
+    expect(
+      resolveStoreIds(env({ EXTENSION_ID: '  abcdef  ', PUBLISHER_ID: '  publisher-2  ' })),
+    ).toEqual({
       extensionId: 'abcdef',
-      publisherId: DEFAULT_PUBLISHER_ID,
+      publisherId: 'publisher-2',
     });
+    expect(() => resolveStoreIds(env({ PUBLISHER_ID: '' }))).toThrow(/PUBLISHER_ID/);
+    expect(() => resolveStoreIds(env({ PUBLISHER_ID: 'bad/id' }))).toThrow(/PUBLISHER_ID/);
     expect(() => resolveStoreIds(env({ EXTENSION_ID: 'bad/id' }))).toThrow(/EXTENSION_ID/);
   });
 
@@ -123,7 +127,7 @@ describe('Chrome Web Store CLI upload', () => {
         args: ['upload', '--source', zip],
       });
       expect(uploadOnly.calls[0]?.env.EXTENSION_ID).toBe('customextensionid');
-      expect(uploadOnly.calls[0]?.env.PUBLISHER_ID).toBe(DEFAULT_PUBLISHER_ID);
+      expect(uploadOnly.calls[0]?.env.PUBLISHER_ID).toBe('publisher-id');
       expect(uploadOnly.calls[0]?.env.CLIENT_SECRET).toBe(clientSecret);
       expect(uploadOnly.calls[0]?.env.GITHUB_TOKEN).toBeUndefined();
       expect(uploadOnly.calls[0]?.args.join(' ')).not.toContain(clientSecret);
@@ -270,9 +274,9 @@ describe('Chrome Web Store workflow', () => {
     expect(workflow).toContain('node scripts/cws-upload.ts store-zip');
     expect(workflow).toContain(CWS_CLI_SPEC);
     expect(workflow).toContain(DEFAULT_EXTENSION_ID);
-    expect(workflow).toContain(DEFAULT_PUBLISHER_ID);
     expect(workflow).toContain('secrets.EXTENSION_ID || vars.EXTENSION_ID ||');
-    expect(workflow).toContain('secrets.PUBLISHER_ID || vars.PUBLISHER_ID ||');
+    expect(workflow).toContain('secrets.PUBLISHER_ID || vars.PUBLISHER_ID }}');
+    expect(workflow).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
     expect(workflow).toContain(
       "CWS_SUBMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.publish == true && 'true' || 'false' }}",
     );
@@ -324,7 +328,8 @@ describe('Chrome Web Store workflow', () => {
       expect(doc).toContain('CLIENT_SECRET');
       expect(doc).toContain('REFRESH_TOKEN');
       expect(doc).toContain(DEFAULT_EXTENSION_ID);
-      expect(doc).toContain(DEFAULT_PUBLISHER_ID);
+      expect(doc).toContain('PUBLISHER_ID');
+      expect(doc).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
       expect(doc).toContain('chrome-webstore-upload upload --source');
       expect(doc).toContain('chrome-webstore-upload publish');
       expect(doc).toContain('pnpm release patch');

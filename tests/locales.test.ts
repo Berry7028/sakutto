@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MODEL_ID, getModel } from '@/engine/model/catalog';
-import { PLAMO_OFFICIAL_LINKS } from '@/shared/plamo-license';
+import { PLAMO_OFFICIAL_LINKS, PROJECT_LINKS } from '@/shared/plamo-license';
 import { formatByteSize } from '@/ui/format';
 
 interface MessageEntry {
@@ -262,6 +262,26 @@ describe('locale messages', () => {
     expect(bundled).toContain(PLAMO_OFFICIAL_LINKS.registration);
     expect(bundled).toContain(PLAMO_OFFICIAL_LINKS.licenseJa);
     expect(bundled).toContain(PLAMO_OFFICIAL_LINKS.licenseEn);
+  });
+
+  /**
+   * The privacy policy and the source repository are the extension's own pages, so both
+   * screens that already link outward point at the same two URLs.
+   */
+  it('links the privacy policy and the source from both pages', () => {
+    for (const file of [
+      '../src/entrypoints/onboarding/App.svelte',
+      '../src/entrypoints/options/App.svelte',
+    ]) {
+      const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+      expect(source, file).toContain('PROJECT_LINKS');
+      expect(source, file).toContain('projectLinks.privacy');
+      expect(source, file).toContain('projectLinks.source');
+    }
+    expect(en.privacyPolicyLink?.message).toBeTruthy();
+    expect(ja.sourceCodeLink?.message).toBeTruthy();
+    expect(PROJECT_LINKS.privacy).toMatch(/^https:\/\//);
+    expect(PROJECT_LINKS.source).toMatch(/^https:\/\/github\.com\//);
   });
 
   it('offers the registration form next to the consent control', () => {

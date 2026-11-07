@@ -6,7 +6,7 @@ Repository: https://github.com/jammaru/sakutto
 
 Privacy policy: https://jammaru.com/sakutto/privacy/
 
-The same privacy URL ends both detailed descriptions in `CWS_LISTING.md`. Preparing these notes does not publish the repository and does not submit the item.
+The same privacy URL ends both detailed descriptions in `CWS_LISTING.md`. The listing is published at https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl.
 
 The packaged name is `extensionName` in both locales: Sakutto - Local AI translation in `en` and Sakutto - ローカルAI翻訳 in `ja`. `extensionShortName` is Sakutto in both. Both the item name and the summary are read-only in the dashboard and come from the zip. The older titles Sakutto for PLaMo and サクッと翻訳 for PLaMo are not the current name. The item is unofficial and is not a Preferred Networks product. The UI says Built with PLaMo.
 

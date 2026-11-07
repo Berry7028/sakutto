@@ -1,7 +1,7 @@
 # Page bench — mock-baseline-0340393
 
 - Mode: mock
-- Commit: `2fc966c1b9494bf9fafb89e6bc3c891549186aca`
+- Commit: `87c341d5239dfd9367f60aef7c029d439aedea80`
 - Started: 2026-11-06T13:56:29.340Z
 - Fixtures: 7, samples per fixture: 2
 
@@ -17,7 +17,7 @@
 
 ## Headline numbers (long-article)
 
-Engine: **mock translator** · mode `mock` · commit `2fc966c`
+Engine: **mock translator** · mode `mock` · commit `87c341d`
 
 | Metric                                     | Value |
 | ------------------------------------------ | ----: |

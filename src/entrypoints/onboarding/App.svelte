@@ -13,7 +13,7 @@
     requestModelInspect,
   } from '@/shared/messages';
   import { advanceModelStatus } from '@/shared/model-progress';
-  import { PLAMO_OFFICIAL_LINKS } from '@/shared/plamo-license';
+  import { PLAMO_OFFICIAL_LINKS, PROJECT_LINKS } from '@/shared/plamo-license';
   import {
     PLAMO_LICENSE_VERSION,
     PLAMO_NOTICE_VERSION,
@@ -38,6 +38,7 @@
   };
 
   const officialLinks = PLAMO_OFFICIAL_LINKS;
+  const projectLinks = PROJECT_LINKS;
 
   const model = getModel(DEFAULT_MODEL_ID);
 
@@ -368,6 +369,16 @@
             </li>
             <li>
               <a href={licenseLinks.notice} target="_blank" rel="noreferrer">{t('licenseNotice')}</a
+              >
+            </li>
+            <li>
+              <a href={projectLinks.privacy} target="_blank" rel="noreferrer"
+                >{t('privacyPolicyLink')}</a
+              >
+            </li>
+            <li>
+              <a href={projectLinks.source} target="_blank" rel="noreferrer"
+                >{t('sourceCodeLink')}</a
               >
             </li>
           </ul>

@@ -4,7 +4,7 @@ English: [CWS_UPLOAD.en.md](CWS_UPLOAD.en.md)
 
 この文書は、既にある Chrome ウェブストアのアイテムを更新する手順です。公式の [Chrome Web Store API v2](https://developer.chrome.com/docs/webstore/using-api) を、[chrome-webstore-upload-cli](https://github.com/fregante/chrome-webstore-upload-cli/) 4.0.2 から呼びます。gcloud は使いません。
 
-アイテムは Developer Dashboard にあります。パブリッシャーは jammaru です。最初のパッケージは審査待ちです。この手順は新しいアイテムを作りません。GitHub リポジトリも公開しません。
+アイテムは Developer Dashboard にあり、パブリッシャーは jammaru です。掲載は https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl で公開済みです。この手順は新しいアイテムを作らず、公開済みのアイテムを更新します。
 
 アップロードと審査への提出は、所有者が Actions でこのワークフローを `workflow_dispatch` として手動実行したときだけです。`main` への push では動きません。バージョンタグ `v*` を push しても、このワークフローは動きません。
 
@@ -25,7 +25,7 @@ API は審査を省略しません。`publish` は、アップロードしたパ
 3. OAuth 同意画面を External で作り、アプリ名、ユーザーサポートのメール、開発者の連絡先を入力します。テストユーザーに、アイテムを所有する Google アカウントを追加します。
 4. 認証情報で OAuth クライアント ID を作ります。アプリケーションの種類はウェブアプリケーションです。承認済みのリダイレクト URI に `https://developers.google.com/oauthplayground` を追加します。表示されたクライアント ID とクライアントシークレットを、それぞれ `CLIENT_ID` と `CLIENT_SECRET` にします。
 5. [OAuth 2.0 Playground](https://developers.google.com/oauthplayground) を開きます。設定で「Use your own OAuth credentials」を選び、クライアント ID とクライアントシークレットを入力します。スコープに `https://www.googleapis.com/auth/chromewebstore` を指定し、Authorize APIs から、アイテムを所有するアカウントで承認します。Exchange authorization code for tokens でリフレッシュトークンを受け取り、`REFRESH_TOKEN` にします。
-6. [Developer Dashboard](https://chrome.google.com/webstore/devconsole) のパブリッシャー設定に表示される ID を確認します。複数のパブリッシャーに属しているときは、対象のパブリッシャーに切り替えてから確認してください。既定値は下の `PUBLISHER_ID` です。
+6. [Developer Dashboard](https://chrome.google.com/webstore/devconsole) のパブリッシャー設定に表示される ID を確認します。複数のパブリッシャーに属しているときは、対象のパブリッシャーに切り替えてから確認してください。その ID を `PUBLISHER_ID` にします。
 7. 同じダッシュボードのアイテム ID を確認します。既定値は下の `EXTENSION_ID` です。
 
 トークンを発行するアカウントは、アイテムを所有するアカウントにしてください。Cloud プロジェクトを作ったアカウントと異なっても構いません。
@@ -40,10 +40,9 @@ API は審査を省略しません。`publish` は、アップロードしたパ
 - `CLIENT_SECRET`
 - `REFRESH_TOKEN`
 
-`EXTENSION_ID` と `PUBLISHER_ID` は、Repository secrets または Variables に置くと、その値を使います。secret が variable より優先されます。どちらも空のときは、次を使います。
+`EXTENSION_ID` と `PUBLISHER_ID` は、Repository secrets または Variables に置きます。secret が variable より優先されます。`EXTENSION_ID` が空のときは、公開中のアイテム ID を使います。`PUBLISHER_ID` は空だとアップロードできません。パブリッシャー ID はこのリポジトリに書きません。
 
 - `EXTENSION_ID`: `mhlbjjijfkoghmcjndgdimhdlfkhadfl`
-- `PUBLISHER_ID`: ``
 
 Release ワークフローの `CWS_CLIENT_ID` などの `CWS_*` とは別の名前です。そちらが無くても、このワークフローは動きます。
 
@@ -87,7 +86,7 @@ export CLIENT_ID="your-client-id"
 export CLIENT_SECRET="your-client-secret"
 export REFRESH_TOKEN="your-refresh-token"
 export EXTENSION_ID="${EXTENSION_ID:-mhlbjjijfkoghmcjndgdimhdlfkhadfl}"
-export PUBLISHER_ID="${PUBLISHER_ID:-}"
+export PUBLISHER_ID="your-publisher-id"
 
 npx --yes chrome-webstore-upload-cli@4.0.2 upload --source <zip>
 ```

@@ -211,20 +211,22 @@ are slow enough to be flaky on shared runners.
 3. Register it in `scripts/bench/pages.ts` with a one-line `stresses` note.
 4. Run `pnpm bench:mock --only <name>` and `pnpm vitest run tests/bench-fixtures.test.ts`.
 
-## History and the checked-in sample
+## History and the checked-in runs
 
-`bench/history/pages.jsonl` holds one **mock** sample, taken after the branch was rebased onto
-`0340393` (4-core Linux VM, headless Chromium 156, `--samples 2`). Its commit is
-`2fc966c`, the commit that stopped the bench's own output from marking the tree dirty, and its
-records say `"mode": "mock"` and `"dirty": false`. It is not a claim about model speed; it exists
-so the expected shape of a run is visible and so `pnpm bench:history` has something to print.
+`bench/history/pages.jsonl` holds one **mock** run, `mock-baseline-0340393`, taken on a 4-core
+Linux VM with headless Chromium 156 and `--samples 2`. Its commit is `87c341d` and its records
+say `"mode": "mock"` and `"dirty": false`. A mock run measures the scheduler, not the model, so
+those rows are not a translation speed.
 
-No live PLaMo run is checked in. The VM used to write this suite has no Docker daemon to build the
-pinned wllama wasm and no model in `bench/.cache/`, so the real-runtime numbers were not taken
-here. Run `pnpm bench:live` on a machine with the wasm build to add the first live line.
+`bench/results/pages/live-windows-09db364-20261107.md` is a **live** run of the same fixtures on
+Windows with the real model, commit `a4946bd`, WebGPU, 8 threads, `--samples 3`. Three fixtures
+in it timed out and have no full-page number. It is one machine's measurement, not a speed the
+extension promises.
 
-Because a mock sample is already checked in, an automatic comparison only considers a run with
-the **same mode and the same set of fixtures**. A `--only long-article` run is not put next to a
+A live run needs the wasm build from `pnpm build:wllama` and the model in `bench/.cache/`. Run
+`pnpm bench:live` on a machine that has both to add another line.
+
+An automatic comparison only considers a run with the **same mode and the same set of fixtures**. A `--only long-article` run is not put next to a
 eight-page run, and a live run is not put next to the mock baseline; in both cases the bench says
 there is nothing to compare rather than printing a delta. `--baseline` / `--compare` still compare
 whatever you name, and the summary prints a warning when that pair spans modes.

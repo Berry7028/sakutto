@@ -56,7 +56,7 @@ gh workflow run release.yml --ref vX.Y.Z -f publish=true
 
 ## Chrome ウェブストア API の資格情報
 
-公式の Chrome Web Store API（v2）を使います。この API は既存のアイテムを更新します。最初のストア掲載は、Developer Dashboard で作ってください。
+公式の Chrome Web Store API（v2）を使います。この API は、公開済みのアイテム https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl を更新します。
 
 資格情報は GitHub の Actions secrets にだけ置いてください。リポジトリ、`.env`、ログ、コミットには書かないでください。
 

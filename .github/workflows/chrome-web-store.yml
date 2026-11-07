@@ -34,7 +34,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
           EXTENSION_ID: ${{ secrets.EXTENSION_ID || vars.EXTENSION_ID || 'mhlbjjijfkoghmcjndgdimhdlfkhadfl' }}
-          PUBLISHER_ID: ${{ secrets.PUBLISHER_ID || vars.PUBLISHER_ID || '' }}
+          PUBLISHER_ID: ${{ secrets.PUBLISHER_ID || vars.PUBLISHER_ID }}
         run: node scripts/cws-upload.ts --check
 
   package:
@@ -81,6 +81,6 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
           EXTENSION_ID: ${{ secrets.EXTENSION_ID || vars.EXTENSION_ID || 'mhlbjjijfkoghmcjndgdimhdlfkhadfl' }}
-          PUBLISHER_ID: ${{ secrets.PUBLISHER_ID || vars.PUBLISHER_ID || '' }}
+          PUBLISHER_ID: ${{ secrets.PUBLISHER_ID || vars.PUBLISHER_ID }}
           CWS_SUBMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.publish == true && 'true' || 'false' }}
         run: node scripts/cws-upload.ts store-zip

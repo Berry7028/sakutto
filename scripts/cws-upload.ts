@@ -6,7 +6,6 @@ import { findZip, StoreError } from './chrome-web-store.ts';
 export const CWS_CLI_BIN = 'chrome-webstore-upload';
 export const CWS_CLI_SPEC = 'chrome-webstore-upload-cli@4.0.2';
 export const DEFAULT_EXTENSION_ID = 'mhlbjjijfkoghmcjndgdimhdlfkhadfl';
-export const DEFAULT_PUBLISHER_ID = '';
 export const REQUIRED_SECRET_NAMES = ['CLIENT_ID', 'CLIENT_SECRET', 'REFRESH_TOKEN'] as const;
 
 const PATH_ID = /^[A-Za-z0-9_-]+$/;
@@ -37,7 +36,7 @@ export function resolveStoreIds(env: NodeJS.ProcessEnv): StoreIds {
   const extensionRaw = env.EXTENSION_ID;
   const publisherRaw = env.PUBLISHER_ID;
   const extensionId = nonempty(extensionRaw) ? extensionRaw.trim() : DEFAULT_EXTENSION_ID;
-  const publisherId = nonempty(publisherRaw) ? publisherRaw.trim() : DEFAULT_PUBLISHER_ID;
+  const publisherId = nonempty(publisherRaw) ? publisherRaw.trim() : '';
   if (!PATH_ID.test(extensionId)) {
     throw new CwsCliError('EXTENSION_ID is missing or is not a single path segment.');
   }

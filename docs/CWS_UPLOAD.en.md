@@ -4,7 +4,7 @@
 
 This updates the existing Chrome Web Store item through the official [Chrome Web Store API v2](https://developer.chrome.com/docs/webstore/using-api) and [chrome-webstore-upload-cli](https://github.com/fregante/chrome-webstore-upload-cli/) 4.0.2. It does not use gcloud.
 
-The item already exists on the developer dashboard for publisher jammaru. The first package is in review. This flow does not create the item, and it does not make the GitHub repository public.
+The item is on the developer dashboard for publisher jammaru, and the listing is published at https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl. This flow does not create a new item. It updates the published one.
 
 The workflow runs only when the owner starts it with `workflow_dispatch`. A push to `main` does not run it. Pushing a `v*` tag does not run it either.
 
@@ -25,7 +25,7 @@ Keep the credentials in GitHub Actions secrets only. Do not commit them, print t
 3. Configure the OAuth consent screen as External. Enter the app name, the user support email, and the developer contact. Add the Google account that owns the item as a test user.
 4. Create a web application OAuth client. Add `https://developers.google.com/oauthplayground` as an authorized redirect URI. Store the client ID as `CLIENT_ID` and the client secret as `CLIENT_SECRET`.
 5. Open the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground). In the settings, choose "Use your own OAuth credentials" and enter that client. Request the scope `https://www.googleapis.com/auth/chromewebstore`, authorize as the account that owns the item, and exchange the code for a refresh token. Store it as `REFRESH_TOKEN`.
-6. Copy the publisher ID from the [developer dashboard](https://chrome.google.com/webstore/devconsole) publisher settings. Switch to the publisher that owns the item first when the account has more than one. The default is the `PUBLISHER_ID` below.
+6. Copy the publisher ID from the [developer dashboard](https://chrome.google.com/webstore/devconsole) publisher settings. Switch to the publisher that owns the item first when the account has more than one. Store that ID as `PUBLISHER_ID`.
 7. Copy the item ID from that dashboard. The default is the `EXTENSION_ID` below.
 
 The account that mints the token must own the item. It can be a different account from the one that created the Cloud project.
@@ -40,10 +40,9 @@ These repository secrets are required. If one is missing, the workflow fails bef
 - `CLIENT_SECRET`
 - `REFRESH_TOKEN`
 
-`EXTENSION_ID` and `PUBLISHER_ID` are optional repository secrets or variables. A secret wins over a variable. When both are unset, the workflow uses:
+`EXTENSION_ID` and `PUBLISHER_ID` are repository secrets or variables. A secret wins over a variable. An empty `EXTENSION_ID` uses the published item id. An empty `PUBLISHER_ID` cannot upload. The publisher id is not written in this repository.
 
 - `EXTENSION_ID`: `mhlbjjijfkoghmcjndgdimhdlfkhadfl`
-- `PUBLISHER_ID`: ``
 
 The Release workflow's `CWS_*` secrets are a different set. This workflow does not read them.
 
@@ -87,7 +86,7 @@ export CLIENT_ID="your-client-id"
 export CLIENT_SECRET="your-client-secret"
 export REFRESH_TOKEN="your-refresh-token"
 export EXTENSION_ID="${EXTENSION_ID:-mhlbjjijfkoghmcjndgdimhdlfkhadfl}"
-export PUBLISHER_ID="${PUBLISHER_ID:-}"
+export PUBLISHER_ID="your-publisher-id"
 
 npx --yes chrome-webstore-upload-cli@4.0.2 upload --source <zip>
 ```

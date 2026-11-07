@@ -42,6 +42,26 @@ test.describe('built extension', () => {
             page.getByRole('heading', { name: 'When the conditions are not met' }),
           ).toBeVisible();
           await expect(page.getByText('Other license information')).toBeAttached();
+          const details = page.locator('details');
+          await details.locator('summary').click();
+          await expect(details.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute(
+            'href',
+            'https://jammaru.com/sakutto/privacy/',
+          );
+          await expect(details.getByRole('link', { name: 'Source code' })).toHaveAttribute(
+            'href',
+            'https://github.com/jammaru/sakutto',
+          );
+        }
+        if (path === 'options.html') {
+          await expect(page.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute(
+            'href',
+            'https://jammaru.com/sakutto/privacy/',
+          );
+          await expect(page.getByRole('link', { name: 'Source code' })).toHaveAttribute(
+            'href',
+            'https://github.com/jammaru/sakutto',
+          );
         }
         if (path === 'typed.html') {
           await expect(page.locator('textarea')).toBeVisible();
@@ -88,12 +108,32 @@ test.describe('built extension', () => {
           await expect(page.getByRole('heading', { name: '仕事・商業目的での利用' })).toBeVisible();
           await expect(page.getByRole('heading', { name: '条件を満たさない場合' })).toBeVisible();
           await expect(page.getByText('その他のライセンス情報')).toBeAttached();
+          const details = page.locator('details');
+          await details.locator('summary').click();
+          await expect(details.getByRole('link', { name: 'プライバシーポリシー' })).toHaveAttribute(
+            'href',
+            'https://jammaru.com/sakutto/privacy/',
+          );
+          await expect(details.getByRole('link', { name: 'ソースコード' })).toHaveAttribute(
+            'href',
+            'https://github.com/jammaru/sakutto',
+          );
           // The age line states the requirement and does not disclaim verification.
           await expect(
             page.getByText(
               '18歳未満など、単独で契約できる年齢に達していない場合は、親権者等の同意が必要です。',
             ),
           ).toBeVisible();
+        }
+        if (path === 'options.html') {
+          await expect(page.getByRole('link', { name: 'プライバシーポリシー' })).toHaveAttribute(
+            'href',
+            'https://jammaru.com/sakutto/privacy/',
+          );
+          await expect(page.getByRole('link', { name: 'ソースコード' })).toHaveAttribute(
+            'href',
+            'https://github.com/jammaru/sakutto',
+          );
         }
         if (path === 'typed.html') {
           await expect(page.locator('textarea')).toBeVisible();

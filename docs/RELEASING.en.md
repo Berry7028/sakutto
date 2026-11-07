@@ -24,7 +24,7 @@ Chrome Web Store upload uses the official API v2. It runs only when every reposi
 gh workflow run release.yml --ref vX.Y.Z -f publish=true
 ```
 
-Run that on the version tag. Re-running the original tag push does not publish. The GitHub Release stays a draft either way. The API updates an existing store item; create the first listing in the dashboard.
+Run that on the version tag. Re-running the original tag push does not publish. The GitHub Release stays a draft either way. The API updates the published item at https://chrome.google.com/webstore/detail/mhlbjjijfkoghmcjndgdimhdlfkhadfl.
 
 Set these as GitHub Actions repository secrets only. Do not commit them, print them, or put them in `.env`.
 

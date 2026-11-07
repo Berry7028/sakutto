@@ -162,6 +162,12 @@
   "privacyDestinations": {
     "message": "The extension's own request is the model download. It starts at huggingface.co and follows Hugging Face's redirect to its CDN. Page text is not included. Chrome downloads its language packs itself."
   },
+  "privacyPolicyLink": {
+    "message": "Privacy policy"
+  },
+  "sourceCodeLink": {
+    "message": "Source code"
+  },
   "licensesHeading": {
     "message": "Licenses"
   },
