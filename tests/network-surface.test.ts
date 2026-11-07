@@ -11,16 +11,23 @@ import { describe, expect, it } from 'vitest';
  * `download.ts` is the only file allowed to reach the network, and the request it builds
  * may not grow a body or credentials.
  */
-function sources(directory: string): Array<{ path: string; code: string }> {
+
+/** Resolved from this file, so the check reads the repository even from another directory. */
+const ROOT = join(import.meta.dirname, '..');
+
+function sources(directory: string, extensions: RegExp): Array<{ path: string; code: string }> {
   const found: Array<{ path: string; code: string }> = [];
-  for (const entry of readdirSync(directory)) {
+  for (const entry of readdirSync(join(ROOT, directory))) {
     const path = join(directory, entry);
-    if (statSync(path).isDirectory()) {
-      found.push(...sources(path));
+    if (statSync(join(ROOT, path)).isDirectory()) {
+      found.push(...sources(path, extensions));
       continue;
     }
-    if (!/\.(?:ts|svelte)$/u.test(entry)) continue;
-    found.push({ path: path.replaceAll('\\', '/'), code: readFileSync(path, 'utf8') });
+    if (!extensions.test(entry)) continue;
+    found.push({
+      path: path.replaceAll('\\', '/'),
+      code: readFileSync(join(ROOT, path), 'utf8'),
+    });
   }
   return found;
 }
@@ -30,7 +37,95 @@ function withoutComments(code: string): string {
   return code.replaceAll(/\/\*[\s\S]*?\*\//gu, '').replaceAll(/^\s*\/\/.*$/gmu, '');
 }
 
-const files = sources('src').map((file) => ({ ...file, code: withoutComments(file.code) }));
+/**
+ * Every file that can execute. `public` is read too: `public/gpu-probe.js` is loaded into an
+ * `about:srcdoc` frame on the offscreen page (`src/shared/capabilities.ts`), so a `fetch`
+ * added there would sit outside the `src` tree the first version of this check scanned.
+ */
+const files = [...sources('src', /\.(?:ts|svelte)$/u), ...sources('public', /\.(?:js|ts)$/u)].map(
+  (file) => ({ ...file, code: withoutComments(file.code) }),
+);
+
+/**
+ * Markup and stylesheets, where a remote script, stylesheet or font is actually declared.
+ *
+ * `.svelte` and `.ts` both belong here: a component carries a `<style>` block, and a page
+ * can be built from a template literal. The first version of this check read only the
+ * TypeScript tree, so the place a remote resource is usually declared — the entry point's
+ * HTML — was never opened. Every shape is read, and the test counts each one, so no
+ * extension can quietly fall out of the scan again.
+ */
+const markup = [
+  ...sources('src', /\.(?:ts|html|css|svelte)$/u),
+  ...sources('public', /\.(?:html|css|js)$/u),
+].map((file) => ({ ...file, code: withoutComments(file.code) }));
+
+/** A URL that leaves the extension's own origin, including a protocol-relative one. */
+const REMOTE_URL = /^(?:https?:)?\/\//iu;
+
+/**
+ * An attribute that makes the browser fetch something.
+ *
+ * `href` is deliberately absent. It is only a fetch on `<link>`, which `LINK_HREF` covers;
+ * on `<a>` it is a link the reader may follow, and a `href="https://…"` in a document or a
+ * template is ordinary content, not a request this extension makes.
+ */
+const RESOURCE_ATTRIBUTE =
+  /(?<![\w-])(?:src|srcset|poster)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/giu;
+
+/**
+ * A CSS `url()`. Function names are ASCII case-insensitive, so `URL(…)` fetches too. The
+ * lookbehind takes an unbounded run of whitespace, not a fixed one: `new    URL(` with any
+ * spacing is still a constructor in script, never a stylesheet function.
+ */
+const URL_FUNCTION = /(?<!\bnew\s+)url\(\s*['"]?([^'")\s]+)['"]?\s*\)/giu;
+
+/** A module specifier the extension would load: dynamic `import()`, or `importScripts()`. */
+const DYNAMIC_IMPORT = /\b(?:import|importScripts)\s*\(\s*['"]([^'"]+)['"]/gu;
+/**
+ * A static module specifier: `import "…"`, `import … from "…"`, `export … from "…"`, or a
+ * bare `@import "…"`. Case-insensitive because a CSS `@IMPORT` is the same rule; a quoted
+ * `@import url(…)` form reaches `URL_FUNCTION` instead.
+ */
+const STATIC_IMPORT = /\b(?:import|export)\b(?:[^;'"()]*?\bfrom\s*)?\s*['"]([^'"]+)['"]/giu;
+/** A worker built from a URL. */
+const WORKER_URL = /\bnew\s+(?:Shared)?Worker\s*\(\s*['"]([^'"]+)['"]/gu;
+
+/**
+ * `<link>` tags only, so a page link's `href` is not read as a subresource. The tag body
+ * skips a quoted value as a unit, so `<link rel="next>page" href="…">` still reaches
+ * `href`; `(?<![\w-])` keeps `data-href` from counting.
+ */
+const LINK_HREF =
+  /<link\b(?:[^>"']|"[^"]*"|'[^']*')*?(?<![\w-])href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/giu;
+
+/**
+ * Remote references in one file: a subresource attribute, a `<link href>`, a CSS `url()`, or
+ * an import / worker specifier. `srcset` holds a comma-separated list, so each entry is
+ * checked on its own, and a quoted attribute may contain a `>` without ending early. An
+ * `@import url(…)` reaches `URL_FUNCTION` and a bare `@import "…"` reaches `STATIC_IMPORT`,
+ * so neither needs a pattern of its own.
+ */
+export function remoteReferences(code: string): string[] {
+  const found: string[] = [];
+  const collect = (value: string | undefined): void => {
+    if (!value) return;
+    for (const entry of value.split(',')) {
+      const url = entry.trim().split(/\s+/u)[0] ?? '';
+      if (REMOTE_URL.test(url) && !found.includes(url)) found.push(url);
+    }
+  };
+
+  for (const match of code.matchAll(RESOURCE_ATTRIBUTE)) {
+    collect(match[1] ?? match[2] ?? match[3]);
+  }
+  for (const match of code.matchAll(LINK_HREF)) collect(match[1] ?? match[2] ?? match[3]);
+  for (const match of code.matchAll(URL_FUNCTION)) collect(match[1]);
+  for (const match of code.matchAll(DYNAMIC_IMPORT)) collect(match[1]);
+  for (const match of code.matchAll(STATIC_IMPORT)) collect(match[1]);
+  for (const match of code.matchAll(WORKER_URL)) collect(match[1]);
+  return found;
+}
 
 const NETWORK_SINKS = [
   /\bXMLHttpRequest\b/u,
@@ -73,12 +168,93 @@ describe('network surface', () => {
   });
 
   it('does not add a remote script, stylesheet, or font to an extension page', () => {
-    const remote = files.filter(
-      (file) =>
-        /<(?:script|link|img|iframe)[^>]+(?:src|href)\s*=\s*['"]https?:/u.test(file.code) ||
-        /@import\s+url\(\s*['"]?https?:/u.test(file.code),
-    );
+    // Counting per extension keeps the check from passing because a directory was scanned
+    // and came back empty, and keeps `public` from dropping out of the set unnoticed.
+    const count = (extension: RegExp): number =>
+      markup.filter((file) => extension.test(file.path)).length;
+    expect(count(/^src\/.*\.html$/u)).toBeGreaterThan(0);
+    expect(count(/\.css$/u)).toBeGreaterThan(0);
+    expect(count(/\.svelte$/u)).toBeGreaterThan(0);
+    expect(count(/\.ts$/u)).toBeGreaterThan(0);
+    expect(count(/^public\/.*\.js$/u)).toBeGreaterThan(0);
 
-    expect(remote.map((file) => file.path)).toEqual([]);
+    const remote = markup
+      .map((file) => ({ path: file.path, urls: remoteReferences(file.code) }))
+      .filter((entry) => entry.urls.length > 0);
+
+    expect(remote).toEqual([]);
+  });
+});
+
+describe('remoteReferences', () => {
+  it('finds a remote subresource and a remote module specifier', () => {
+    expect(remoteReferences('<script src="https://cdn.example.com/a.js"></script>')).toEqual([
+      'https://cdn.example.com/a.js',
+    ]);
+    expect(remoteReferences('import "https://cdn.example.com/m.js";')).toEqual([
+      'https://cdn.example.com/m.js',
+    ]);
+    expect(remoteReferences("import('https://cdn.example.com/m.js')")).toEqual([
+      'https://cdn.example.com/m.js',
+    ]);
+    expect(remoteReferences("importScripts('https://cdn.example.com/w.js')")).toEqual([
+      'https://cdn.example.com/w.js',
+    ]);
+    expect(remoteReferences("new Worker('https://cdn.example.com/w.js')")).toEqual([
+      'https://cdn.example.com/w.js',
+    ]);
+    expect(
+      remoteReferences('<link rel="stylesheet" href="https://cdn.example.com/a.css">'),
+    ).toEqual(['https://cdn.example.com/a.css']);
+    expect(remoteReferences('.a { background: url(https://cdn.example.com/a.png); }')).toEqual([
+      'https://cdn.example.com/a.png',
+    ]);
+    expect(remoteReferences('@import "https://cdn.example.com/a.css";')).toEqual([
+      'https://cdn.example.com/a.css',
+    ]);
+    expect(remoteReferences('<img srcset="/a.png 1x, https://cdn.example.com/b.png 2x">')).toEqual([
+      'https://cdn.example.com/b.png',
+    ]);
+    expect(remoteReferences('<script data-x="a>b" src="https://cdn.example.com/m.js">')).toEqual([
+      'https://cdn.example.com/m.js',
+    ]);
+    expect(remoteReferences('.x { background: url(//cdn.example.com/a.png); }')).toEqual([
+      '//cdn.example.com/a.png',
+    ]);
+  });
+
+  it('reads an uppercased CSS url() and a <link> whose tag body holds a >', () => {
+    // CSS function names are ASCII case-insensitive, so `URL(` fetches too.
+    expect(remoteReferences('.x { background: URL(https://cdn.example.com/a.png); }')).toEqual([
+      'https://cdn.example.com/a.png',
+    ]);
+    // A quoted tag body may contain a `>`; the attribute after it still counts.
+    expect(remoteReferences('<link rel="next>page" href="https://cdn.example.com/a.css">')).toEqual(
+      ['https://cdn.example.com/a.css'],
+    );
+    // `@import` is likewise case-insensitive, including the form with a media query after it.
+    expect(remoteReferences('@IMPORT "https://cdn.example.com/a.css";')).toEqual([
+      'https://cdn.example.com/a.css',
+    ]);
+    expect(remoteReferences("@Import 'https://cdn.example.com/a.css' screen;")).toEqual([
+      'https://cdn.example.com/a.css',
+    ]);
+  });
+
+  it('still reads a constructor call with unusual spacing as code, not CSS', () => {
+    // Unbounded whitespace in the lookbehind: a fixed count left these open.
+    expect(remoteReferences("const u = new     URL('https://cdn.example.com/');")).toEqual([]);
+    expect(remoteReferences("const u = new\n\n\t\t\t\t\tURL('https://cdn.example.com/');")).toEqual(
+      [],
+    );
+  });
+
+  it('leaves a local path and a page link alone', () => {
+    expect(remoteReferences('<img src="./icon.png"><link href="../ui/base.css">')).toEqual([]);
+    expect(remoteReferences('<img data-src="https://cdn.example.com/a.png">')).toEqual([]);
+    expect(remoteReferences('<link data-href="https://cdn.example.com/a.css">')).toEqual([]);
+    // A link the reader may follow is content, not a request this extension makes.
+    expect(remoteReferences('<a href="https://jammaru.com/sakutto">Sakutto</a>')).toEqual([]);
+    expect(remoteReferences("const base = new URL('https://cdn.example.com/');")).toEqual([]);
   });
 });
