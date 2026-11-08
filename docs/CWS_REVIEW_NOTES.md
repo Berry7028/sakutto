@@ -58,7 +58,7 @@ size 1807199392
 sha256 f36d0813dd95573a852ab5d76e374c543632d9e292929e922bcdbf7e53b494e0
 url https://huggingface.co/pfnet/plamo-3-translate-2b-GGUF/resolve/232fbd7916519edecddfdae0beae7e76fe70453f/plamo-3-translate-2b-Q4_K_M.gguf
 
-The packaged runtime is the pinned wllama build (commit d275dac17bc7f190161deb24fd834ce03342e2bc, llama.cpp 5aeac37a35b44fde4bdffaec9159f2fcb253b622). It is compiled into the zip. It is not downloaded at runtime. The listing does not claim a GPU speed. WebGPU and n_parallel on a real GPU are unmeasured in this repository.
+The packaged runtime is the pinned wllama build (commit d275dac17bc7f190161deb24fd834ce03342e2bc, llama.cpp 5aeac37a35b44fde4bdffaec9159f2fcb253b622). It is compiled into the zip. It is not downloaded at runtime. The listing does not claim a GPU speed. The repository's `bench/results/pages/` holds live WebGPU runs from one machine (an RTX 4070 Ti SUPER); they are one machine's measurement, not a speed the extension promises.
 ```
 
 文字数: 5664
@@ -131,4 +131,4 @@ content script は `src/entrypoints/content.ts` の `registration: 'runtime'` �
 
 Chrome の Translator API を使うのは、PLaMo のモデルが対応していない言語の組み合わせで、かつ Chrome が言語パックを `available` と報告しているときだけです（`src/engine/router.ts`、`src/engine/chrome/translator.ts`）。モデルが対応する組み合わせを Chrome に回すことはないため、モデルが描画するまでは原文のまま表示します。言語パックの取得は Chrome です。「はじめる」は、パックが `downloadable` でもクリック中に `Translator.create()` を呼ぶことがあります（`src/shared/translator-pack.ts`）。この呼び出しにページ本文はありません。ページに言語タグがないとき、content script が本文から最大 1,200 文字を Chrome の端末内 Language Detector に渡します（`src/dom/detect.ts`）。PLaMo が対応しない組み合わせでソース言語がまだ空のときは、最大 1,000 文字を同じ API に渡します（`src/engine/offscreen/host.ts`、`src/engine/chrome/translator.ts`）。これらは、この拡張機能がサーバーへ送るリクエストではありません。
 
-速度の数値は審査メモの主張にしません。WebGPU と `n_parallel` を実 GPU で測った結果は、このリポジトリにありません。
+速度の数値は審査メモの主張にしません。`bench/results/pages/` の live WebGPU 記録は 1 台のマシン（RTX 4070 Ti SUPER）での計測で、拡張機能が約束する速度ではありません。

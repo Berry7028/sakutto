@@ -56,16 +56,48 @@ describe('wllama runtime load', () => {
     const runtime = await createWllamaRuntime(new Blob(), gpu);
 
     expect(runtime.backend).toBe('webgpu');
-    expect(runtime.parallel).toBe(1);
+    expect(runtime.parallel).toBe(2);
     expect(native.loadModel).toHaveBeenCalledWith(
       [expect.any(Blob)],
       expect.objectContaining({
-        n_ctx: 2048,
-        n_parallel: 1,
+        n_ctx: 4096,
+        n_parallel: 2,
         ctx_shift: false,
         log_level: 2,
       }),
     );
+  });
+
+  it('gives each WebGPU sequence its own KV cache', async () => {
+    native.log = ['load_tensors: offloaded 29/29 layers to GPU'];
+    await createWllamaRuntime(new Blob(), gpu);
+
+    // wllama defaults kv_unified to true. With one shared cache the request right after a
+    // pair takes 4222 ms instead of 661 ms, and a page keeping two requests in flight never
+    // settles; see `backend.ts`.
+    expect(native.loadModel).toHaveBeenCalledWith(
+      [expect.any(Blob)],
+      expect.objectContaining({ cont_batching: true, kv_unified: false }),
+    );
+  });
+
+  it('gates as many completions as llama.cpp has sequences', async () => {
+    native.log = ['load_tensors: offloaded 29/29 layers to GPU'];
+    const runtime = await createWllamaRuntime(new Blob(), gpu);
+
+    // The gate width, the scheduler width and n_parallel all come from the same number;
+    // loading two sequences while gating one would waste the second.
+    const params = native.loadModel.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(runtime.parallel).toBe(params['n_parallel']);
+  });
+
+  it('leaves the single CPU sequence on one shared KV cache', async () => {
+    native.log = ['load_tensors: offloaded 0/29 layers to GPU'];
+    await createWllamaRuntime(new Blob(), cpu);
+
+    const params = native.loadModel.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(params).not.toHaveProperty('kv_unified');
+    expect(params).not.toHaveProperty('cont_batching');
   });
 
   it('rejects a WebGPU load that llama.cpp quietly ran on the CPU', async () => {

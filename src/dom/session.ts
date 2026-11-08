@@ -1039,8 +1039,8 @@ export class PageSession {
 
   /**
    * A queued selection starts even while a page batch is in flight. The engine
-   * scheduler then runs it immediately after the completion that is already
-   * inside the model, without cancelling that completion.
+   * scheduler then runs it next, after whatever completions are already inside the model,
+   * without cancelling those.
    */
   private startQueuedSelection(): void {
     const item = this.selection;

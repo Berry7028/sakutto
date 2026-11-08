@@ -27,7 +27,9 @@ export const CPU_COSTS: SimCosts = {
 export const GPU_COSTS: SimCosts = {
   prefillMsPerToken: 1,
   decodeMsPerToken: 12,
-  parallel: 1,
+  // The WebGPU tier loads two sequences with a KV cache per sequence, so the simulator has
+  // to model two as well or it would test a shape the extension no longer uses.
+  parallel: 2,
   backend: 'webgpu',
 };
 

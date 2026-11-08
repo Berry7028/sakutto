@@ -33,6 +33,8 @@ export interface WllamaLoadParams {
   n_batch?: number;
   n_ubatch?: number;
   cont_batching?: boolean;
+  /** One KV cache per sequence. wllama defaults to a single shared cache. */
+  kv_unified?: boolean;
   flash_attn?: boolean;
   use_mmap?: boolean;
   use_mlock?: boolean;
