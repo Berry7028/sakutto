@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { MAX_GLOSSARY_ENTRIES } from '@/shared/glossary';
 import { displayLanguage, resolveTargetLanguage } from '@/shared/languages';
 import {
+  DEFAULT_OLLAMA_MODEL,
+  DEFAULT_OLLAMA_URL,
   DEFAULT_SETTINGS,
   LEGACY_NOTICE_VERSION,
   PLAMO_LICENSE_VERSION,
@@ -9,7 +11,10 @@ import {
   SETTINGS_SCHEMA_VERSION,
   createDefaultSettings,
   needsLicenseReconsent,
+  normalizeOllamaModel,
+  normalizeOllamaUrl,
   normalizeSettings,
+  ollamaOrigin,
   type Settings,
 } from '@/shared/settings';
 
@@ -25,6 +30,9 @@ function stored(overrides: Partial<Settings> = {}): Settings {
     idleMinutes: 5,
     tier: 'auto',
     pace: 'quality',
+    engineSource: 'browser',
+    ollamaUrl: DEFAULT_OLLAMA_URL,
+    ollamaModel: DEFAULT_OLLAMA_MODEL,
     ...overrides,
   };
 }
@@ -219,6 +227,68 @@ describe('settings defaults', () => {
         'ja',
       ).consent,
     ).toBeNull();
+  });
+});
+
+describe('Ollama settings', () => {
+  it('defaults to the in-browser engine and the model card example', () => {
+    expect(DEFAULT_SETTINGS.engineSource).toBe('browser');
+    expect(DEFAULT_SETTINGS.ollamaUrl).toBe('http://127.0.0.1:11434');
+    expect(DEFAULT_SETTINGS.ollamaModel).toBe(
+      'hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M',
+    );
+  });
+
+  it('keeps an Ollama choice and its endpoint across a reload', () => {
+    const settings = normalizeSettings(
+      {
+        schemaVersion: SETTINGS_SCHEMA_VERSION,
+        engineSource: 'ollama',
+        ollamaUrl: 'http://192.168.1.20:11434/',
+        ollamaModel: 'plamo-3-translate:8b',
+      },
+      'ja',
+    );
+
+    expect(settings.engineSource).toBe('ollama');
+    expect(settings.ollamaUrl).toBe('http://192.168.1.20:11434');
+    expect(settings.ollamaModel).toBe('plamo-3-translate:8b');
+  });
+
+  it('repairs an endpoint that is not a plain http(s) URL', () => {
+    for (const value of [
+      'file:///etc/passwd',
+      'javascript:alert(1)',
+      'http://user:secret@127.0.0.1:11434',
+      'not a url',
+      '',
+      'x'.repeat(400),
+    ]) {
+      expect(normalizeOllamaUrl(value), value).toBe(DEFAULT_OLLAMA_URL);
+    }
+    expect(normalizeOllamaUrl(undefined)).toBe(DEFAULT_OLLAMA_URL);
+  });
+
+  it('keeps a path prefix on a reverse-proxied endpoint', () => {
+    expect(normalizeOllamaUrl('https://gpu.example/ollama/')).toBe('https://gpu.example/ollama');
+    expect(ollamaOrigin('https://gpu.example/ollama/')).toBe('https://gpu.example');
+    expect(ollamaOrigin('not a url')).toBe('http://127.0.0.1:11434');
+  });
+
+  it('repairs an empty or multi-line model name', () => {
+    expect(normalizeOllamaModel('  plamo-3-translate:8b  ')).toBe('plamo-3-translate:8b');
+    expect(normalizeOllamaModel('')).toBe(DEFAULT_OLLAMA_MODEL);
+    expect(normalizeOllamaModel('a\nb')).toBe(DEFAULT_OLLAMA_MODEL);
+    expect(normalizeOllamaModel(42)).toBe(DEFAULT_OLLAMA_MODEL);
+  });
+
+  it('falls back to the browser engine for an unknown source', () => {
+    expect(
+      normalizeSettings(
+        { schemaVersion: SETTINGS_SCHEMA_VERSION, engineSource: 'cloud' },
+        'en',
+      ).engineSource,
+    ).toBe('browser');
   });
 });
 

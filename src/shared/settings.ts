@@ -32,6 +32,28 @@ export type TierPreference = 'auto' | 'g' | 'c8' | 'c4';
 export type TranslationPace = 'fast' | 'quality';
 export type IdleMinutes = 0 | 1 | 5 | 15;
 
+/**
+ * Where the translation model runs. `browser` is the bundled wllama runtime; `ollama`
+ * sends the same PFML3 prompt to a local Ollama server, which can hold a larger PLaMo
+ * checkpoint and use the machine's GPU directly.
+ */
+export type EngineSource = 'browser' | 'ollama';
+
+export const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';
+
+/**
+ * The model card's Ollama example. It is a Hugging Face GGUF pulled with
+ * `ollama pull hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M`, so the default is a model a
+ * reader can actually fetch rather than an alias this extension invents.
+ */
+export const DEFAULT_OLLAMA_MODEL = 'hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M';
+
+/** Context Ollama is asked for; also the budget the prompt planner uses. */
+export const OLLAMA_CONTEXT_TOKENS = 4096;
+
+const MAX_OLLAMA_URL = 300;
+const MAX_OLLAMA_MODEL = 200;
+
 export interface LicenseConsent {
   license: 'plamo-community';
   version: typeof PLAMO_LICENSE_VERSION;
@@ -59,6 +81,9 @@ export interface Settings {
   idleMinutes: IdleMinutes;
   tier: TierPreference;
   pace: TranslationPace;
+  engineSource: EngineSource;
+  ollamaUrl: string;
+  ollamaModel: string;
 }
 
 export type SettingsPatch = Partial<
@@ -73,6 +98,9 @@ export type SettingsPatch = Partial<
     | 'idleMinutes'
     | 'tier'
     | 'pace'
+    | 'engineSource'
+    | 'ollamaUrl'
+    | 'ollamaModel'
   >
 >;
 
@@ -87,6 +115,9 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   idleMinutes: 5,
   tier: 'auto',
   pace: 'quality',
+  engineSource: 'browser',
+  ollamaUrl: DEFAULT_OLLAMA_URL,
+  ollamaModel: DEFAULT_OLLAMA_MODEL,
 });
 
 export function createDefaultSettings(uiLanguage: string): Settings {
@@ -101,12 +132,58 @@ export function isTranslationPace(value: unknown): value is TranslationPace {
   return value === 'fast' || value === 'quality';
 }
 
+export function isEngineSource(value: unknown): value is EngineSource {
+  return value === 'browser' || value === 'ollama';
+}
+
 export function isTierPreference(value: unknown): value is TierPreference {
   return value === 'auto' || value === 'g' || value === 'c8' || value === 'c4';
 }
 
 export function isIdleMinutes(value: unknown): value is IdleMinutes {
   return value === 0 || value === 1 || value === 5 || value === 15;
+}
+
+/**
+ * Keeps a stored Ollama base URL to an http(s) origin plus an optional path. A value that
+ * is not a URL, carries credentials, or uses another scheme falls back to the loopback
+ * default rather than leaving a half-valid string for the client to build on.
+ */
+export function normalizeOllamaUrl(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_OLLAMA_URL;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_OLLAMA_URL) return DEFAULT_OLLAMA_URL;
+
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return DEFAULT_OLLAMA_URL;
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return DEFAULT_OLLAMA_URL;
+  if (url.username.length > 0 || url.password.length > 0) return DEFAULT_OLLAMA_URL;
+
+  const path = url.pathname.replace(/\/+$/u, '');
+  return `${url.origin}${path}`;
+}
+
+/** The origin a host permission is requested for, or null for a URL the client cannot use. */
+export function ollamaOrigin(value: string): string | null {
+  try {
+    const url = new URL(normalizeOllamaUrl(value));
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeOllamaModel(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_OLLAMA_MODEL;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_OLLAMA_MODEL) return DEFAULT_OLLAMA_MODEL;
+  if (/[\r\n\t]/u.test(trimmed)) return DEFAULT_OLLAMA_MODEL;
+  return trimmed;
 }
 
 export function normalizeSettings(value: unknown, uiLanguage: string): Settings {
@@ -126,6 +203,9 @@ export function normalizeSettings(value: unknown, uiLanguage: string): Settings 
     idleMinutes: isIdleMinutes(value.idleMinutes) ? value.idleMinutes : defaults.idleMinutes,
     tier: isTierPreference(value.tier) ? value.tier : defaults.tier,
     pace: isTranslationPace(value.pace) ? value.pace : defaults.pace,
+    engineSource: isEngineSource(value.engineSource) ? value.engineSource : defaults.engineSource,
+    ollamaUrl: normalizeOllamaUrl(value.ollamaUrl),
+    ollamaModel: normalizeOllamaModel(value.ollamaModel),
   };
 }
 
