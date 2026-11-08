@@ -2,6 +2,21 @@
 
 Release sections are added by `pnpm release`. Each section lists commit subjects since the previous `vX.Y.Z` tag.
 
+## [1.0.1] - 2026-11-08
+
+- Stop the release test from freezing CHANGELOG.md at the empty template (#15)
+- Show the Mac shortcuts next to the Windows ones
+- Set the store name, summary, and detailed descriptions from the packaged locales
+- Drop Built with PLaMo from the store summary (#17)
+- Replace the store detailed descriptions with the approved copy (#18)
+- Document the published Chrome Web Store listing.
+- Format the checked-in live bench report.
+- Keep typed text out of the model and test the privacy claim (#19)
+- Close the gaps in the typed-text guard, the network-surface check, and the digest wording (#20)
+- Rewrite the privacy policy as a stable user-facing page (#21)
+- Decode two WebGPU sequences at once with a KV cache per sequence (#22)
+- Raise glossary capacity and the typed-text character ceiling (#23)
+
 ## [1.0.0] - 2026-11-06
 
 - No commits since the previous release.
