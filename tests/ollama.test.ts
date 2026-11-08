@@ -275,6 +275,47 @@ describe('OllamaEngine', () => {
     expect(fetchImpl.calls).toHaveLength(0);
   });
 
+  it('reads the endpoint again on each probe, so a settings change is visible at once', async () => {
+    let config = {
+      enabled: true,
+      url: 'http://127.0.0.1:11434',
+      model: 'plamo-3-translate:0.8b',
+    };
+    const fetchImpl = fakeFetch(
+      (call) =>
+        new Response(
+          JSON.stringify({
+            models: [
+              {
+                name: call.url.startsWith('http://127.0.0.1:11435')
+                  ? 'plamo-3-translate:2b'
+                  : 'plamo-3-translate:0.8b',
+              },
+            ],
+          }),
+        ),
+    );
+    const ollama = new OllamaEngine({
+      loadConfig: async () => config,
+      fetchImpl,
+    });
+
+    await expect(ollama.probeNow()).resolves.toMatchObject({
+      url: 'http://127.0.0.1:11434',
+      state: 'ready',
+    });
+
+    config = {
+      enabled: true,
+      url: 'http://127.0.0.1:11435',
+      model: 'plamo-3-translate:2b',
+    };
+    await expect(ollama.probeNow()).resolves.toMatchObject({
+      url: 'http://127.0.0.1:11435',
+      state: 'ready',
+    });
+  });
+
   it('caches a probe, and drops it after a failed translation', async () => {
     const fetchImpl = fakeFetch((call) => {
       if (call.url.endsWith('/api/tags')) {

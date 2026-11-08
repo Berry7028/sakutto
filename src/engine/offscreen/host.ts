@@ -5,13 +5,7 @@ import { canonicalLanguage } from '@/shared/languages';
 import type { EngineStatus, ModelStatus } from '@/shared/engine-status';
 import { advanceModelStatus } from '@/shared/model-progress';
 import { loadSettings } from '@/shared/storage';
-import {
-  DEFAULT_OLLAMA_MODEL,
-  DEFAULT_OLLAMA_URL,
-  type EngineSource,
-  type Settings,
-  type TierPreference,
-} from '@/shared/settings';
+import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, type TierPreference } from '@/shared/settings';
 import { MemoryTranslationCacheStore, IndexedDbTranslationCacheStore } from '../cache/store';
 import { CachingEngine } from '../cache/caching-engine';
 import { TranslationCache } from '../cache/cache';
@@ -144,16 +138,6 @@ export class EngineHost {
   private prewarmKey: string | null = null;
   /** The probe offered WebGPU but the model could not be placed on it. */
   private gpuFallback = false;
-  /**
-   * The engine choice is cached here rather than read from storage on every segment. The
-   * storage listener below keeps it current, and the Ollama engine reads the same object.
-   */
-  private engineSource: EngineSource = 'browser';
-  private ollamaConfig = {
-    enabled: false,
-    url: DEFAULT_OLLAMA_URL,
-    model: DEFAULT_OLLAMA_MODEL,
-  };
 
   constructor(options: EngineHostOptions = {}) {
     this.idleReleaseMs = options.idleReleaseMs ?? IDLE_RELEASE_MS;
@@ -166,23 +150,11 @@ export class EngineHost {
 
         const before = changes.settings.oldValue as { engineSource?: unknown } | undefined;
         const after = changes.settings.newValue as { engineSource?: unknown } | undefined;
-        void loadSettings()
-          .then((settings) => this.applySettings(settings))
-          .catch(() => undefined);
         if (after?.engineSource === 'ollama' && before?.engineSource !== 'ollama') {
           void this.releaseBrowserModel();
         }
       });
     }
-  }
-
-  private applySettings(settings: Settings | null): void {
-    this.engineSource = settings?.engineSource === 'ollama' ? 'ollama' : 'browser';
-    this.ollamaConfig = {
-      enabled: this.engineSource === 'ollama',
-      url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
-      model: settings?.ollamaModel ?? DEFAULT_OLLAMA_MODEL,
-    };
   }
 
   handlePort(port: Browser.runtime.Port): void {
@@ -223,7 +195,6 @@ export class EngineHost {
       hardwareConcurrency: capabilities.hardwareConcurrency,
     };
     const stored = browser.storage?.local ? await loadSettings().catch(() => null) : null;
-    this.applySettings(stored);
     const selection = selectionForTier(stored?.tier ?? 'auto', probe);
     const selectionState = { current: selection };
     const store = await OpfsModelFileStore.open();
@@ -247,23 +218,26 @@ export class EngineHost {
     const lazy = new LazyInBrowserEngine({ loadRuntime: load });
 
     const ollama = new OllamaEngine({
-      loadConfig: async () => this.ollamaConfig,
+      loadConfig: async () => {
+        const settings = await loadSettings().catch(() => null);
+        return {
+          enabled: settings?.engineSource === 'ollama',
+          url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+          model: settings?.ollamaModel ?? DEFAULT_OLLAMA_MODEL,
+        };
+      },
     });
 
     const chromeForCache = chrome.available ? new CachingEngine(chrome, cache, 'chrome') : null;
-    // Ollama translations get their own key space, so a switch between the browser model and
-    // a local checkpoint never serves one engine's output under the other's name.
-    const ollamaForCache = new CachingEngine(
-      ollama,
-      cache,
-      () => `ollama:${this.ollamaConfig.model}`,
-    );
 
     const router = new RoutingEngine({
       plamo: new CachingEngine(lazy, cache, () => this.activeModelId),
-      ollama: ollamaForCache,
+      ollama,
       chrome: chromeForCache,
-      preferOllama: async () => this.engineSource === 'ollama',
+      preferOllama: async () => {
+        const settings = await loadSettings().catch(() => null);
+        return settings?.engineSource === 'ollama';
+      },
       plamoSupports: (src, tgt) =>
         canonicalLanguage(tgt) !== null &&
         (src === undefined || src.trim().length === 0 || canonicalLanguage(src) !== null),
@@ -417,8 +391,9 @@ export class EngineHost {
 
     try {
       const services = await this.services();
+      const settings = await loadSettings().catch(() => null);
 
-      if (this.engineSource === 'ollama') {
+      if (settings?.engineSource === 'ollama') {
         const status = await services.ollama.probeNow();
         if (status.state === 'model-missing') {
           throw new EngineError(
