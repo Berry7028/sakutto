@@ -4,18 +4,52 @@ Release sections are added by `pnpm release`. Each section lists commit subjects
 
 ## [1.0.1] - 2026-11-08
 
-- Stop the release test from freezing CHANGELOG.md at the empty template (#15)
-- Show the Mac shortcuts next to the Windows ones
-- Set the store name, summary, and detailed descriptions from the packaged locales
-- Drop Built with PLaMo from the store summary (#17)
-- Replace the store detailed descriptions with the approved copy (#18)
-- Document the published Chrome Web Store listing.
-- Format the checked-in live bench report.
-- Keep typed text out of the model and test the privacy claim (#19)
-- Close the gaps in the typed-text guard, the network-surface check, and the digest wording (#20)
-- Rewrite the privacy policy as a stable user-facing page (#21)
-- Decode two WebGPU sequences at once with a KV cache per sequence (#22)
-- Raise glossary capacity and the typed-text character ceiling (#23)
+- Larger glossaries, longer typed-text translation, stronger privacy guards, a
+  clearer Chrome Web Store listing, and faster GPU page translation.
+- Glossary lists can now hold far more of your own terms. A user requested a much
+  larger, effectively unlimited glossary, and that seemed reasonable. Each stored
+  or imported list (the global glossary, and each site list) now keeps up to 5,000
+  entries instead of 1,000. A translate message may carry the merged global and
+  site lists together, up to 10,000 entries. The model prompt still includes only
+  the terms that actually appear in the current segment, so a large list is not
+  pasted in full.
+- Typed-text translation accepts a much longer paste in one go. The per-request
+  ceiling is 100,000 characters, up from 20,000, because on-device translation has
+  no per-character cost. Long text is still split into prompt-sized pieces for the
+  model. Surrounding context taken from a page stays at 20,000 characters.
+- Text you type into a page is kept out of the model. Selecting everything in a
+  search box, message box, or form no longer queues that field as if it were page
+  copy. The same guard follows the caret into custom elements that wrap their own
+  inputs. Closed shadow roots stay out of reach. A run of dots or asterisks in
+  ordinary page text is no longer treated as a hidden password; only a real
+  password field is masked that way.
+- The on-page translation overlay is closed off from the host page, so a site
+  script cannot read its label, rewrite it, or turn on "always translate this
+  site" for you.
+- The extension's own network use is still just the model download. That request
+  carries no page text and no credentials, and extension pages do not load remote
+  scripts, styles, or fonts. Those surfaces are checked in tests, not only claimed
+  in review notes. The privacy policy was also aligned with the download itself:
+  the file is written, hashed against the pin, and kept only when the digest
+  matches.
+- The privacy policy is rewritten as a stable page for readers. In English and
+  Japanese it explains the kinds of data involved and who can see them, instead of
+  tracking every implementation detail (hash order, byte sizes, button labels). It
+  says translation runs on your device, there is no account, advertising, or
+  analytics, and the only file the extension downloads is the model.
+- Keyboard hints now show the Mac keys next to the Windows ones: Option+A,
+  Option+B, and Option+S beside Alt+A/B/S, and ⌘+Enter beside Ctrl+Enter on the
+  typed-text page.
+- The Chrome Web Store listing matches the packaged locales. The item name is
+  "Sakutto - Local AI translation" (Japanese: "Sakutto - ローカルAI翻訳"). The
+  short summary no longer repeats "Built with PLaMo"; that credit stays in the
+  detailed description. The detailed copy covers page, selection, and typed
+  translation, says there are no ads or analytics, and states that page text is
+  not sent to a translation server.
+- On a GPU, page translation now decodes two paragraphs at once, each with its own
+  KV cache. A shared cache had made the paragraph after a pair much slower, which
+  added up on long pages. The translated text is unchanged. CPU translation is
+  untouched.
 
 ## [1.0.0] - 2026-11-06
 
