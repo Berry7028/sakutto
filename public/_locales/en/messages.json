@@ -217,7 +217,7 @@
     "message": "Pull the PLaMo GGUF. The 2B Q4_K_M file is a good starting point; 8B and 31B need more memory."
   },
   "ollamaSetupOrigin": {
-    "message": "Allow the extension origin. Ollama refuses browser origins it does not know."
+    "message": "Allow the extension origin. Ollama refuses browser origins it does not know. The store build's ID is mhlbjjijfkoghmcjndgdimhdlfkhadfl."
   },
   "ollamaSetupChoose": {
     "message": "Choose Local Ollama above, then press Check connection."

@@ -6,10 +6,10 @@ Sakutto is an unofficial Chrome extension that translates web pages on your devi
 
 ## At a glance
 
-- Translation runs on your device. Page text is not sent to a translation server.
+- Translation runs on your device by default. If you turn on Local Ollama, page text is sent only to the Ollama URL you configure.
 - There is no account, no advertising, and no analytics or telemetry.
 - The developer does not receive the pages you translate, your selections, your glossary, or the translations.
-- The only file the extension downloads is the PLaMo model, from Hugging Face.
+- The only file the extension downloads is the PLaMo model, from Hugging Face. Local Ollama uses a model you installed yourself.
 - You can delete the model and clear the translation cache in the extension's settings, or remove the extension.
 
 ## About this extension
@@ -20,7 +20,7 @@ Sakutto is an unofficial extension. It is not a product of Preferred Networks, I
 
 When you ask it to translate a page, a selection, or text you type on its own typed-text page, or when a site is set to translate automatically, the extension reads the text it is about to translate, along with the settings you have entered.
 
-That text is used only to produce a translation on your device.
+That text is used only to produce a translation, either on your device or on the Ollama server you configure.
 
 ## What is not collected
 
@@ -29,6 +29,8 @@ The developer does not receive your page text, your selections, your glossary, o
 ## How translation works
 
 PLaMo 3 Translate runs inside the extension on your device. The model file is not bundled with the extension: the extension downloads it from Hugging Face the first time it needs it, and keeps it on your device. After that, PLaMo translation does not need a network connection.
+
+If you turn on Local Ollama, the extension sends the same PLaMo prompt to the Ollama server at the URL in its settings instead. That server is normally on your own machine. It receives the text being translated, the glossary entries that apply to it, and the translation options. The developer does not receive them. When the Ollama server is unavailable, the extension reports the failure and the page keeps its source text; it does not quietly switch to the in-browser model.
 
 For language pairs PLaMo does not support, the extension uses Chrome's built-in translator, which also runs on the device. Chrome downloads the language packs for those pairs itself.
 
@@ -40,6 +42,8 @@ These are Chrome features running on your device. They are not uploads that this
 
 The extension's own network request is the model download from Hugging Face. Hugging Face, and the network that serves the file, can see your IP address and that a model file was requested. They do not receive the page text, your selections, your glossary, or your translations.
 
+When Local Ollama is selected, translation requests go to the Ollama URL in the extension's settings instead. That server, and anyone who can observe the network between the extension and it, can see the text being translated. Keep the URL on a machine and a network you trust.
+
 If you installed the extension from the Chrome Web Store, Chrome may update it. That is Chrome's own request, not one this extension makes.
 
 ## Stored on your device
@@ -47,6 +51,7 @@ If you installed the extension from the Chrome Web Store, Chrome may update it. 
 The extension keeps the following on your device and does not send it to the developer:
 
 - your settings, such as the target language and the reading style;
+- your Ollama endpoint and model name, when you use Local Ollama;
 - your glossary and your per-site rules;
 - a record that you accepted the license;
 - the model file;
@@ -60,7 +65,7 @@ The extension tries not to translate text you are typing into a form field, and 
 
 ## Permissions
 
-The extension is not given access to every site when you install it. A one-time translation of the current tab uses the access Chrome grants for that action. Access to a particular site is optional, and is requested only when you turn that site on, for automatic translation.
+The extension is not given access to every site when you install it. A one-time translation of the current tab uses the access Chrome grants for that action. Access to a particular site is optional, and is requested only when you turn that site on, for automatic translation. Local Ollama asks for access to the Ollama origin only when you enable it or press **Allow access**.
 
 ## Limited Use
 
@@ -78,10 +83,10 @@ Sakutto は、端末の中でウェブページを翻訳する非公式の Chrom
 
 ## 要点
 
-- 翻訳は端末の中で行います。ページの本文を翻訳サーバーへ送ることはありません。
+- 翻訳は既定で端末の中で行います。ローカル Ollama をオンにした場合は、設定した Ollama の URL にだけページの本文を送ります。
 - アカウントはありません。広告も、分析も、テレメトリもありません。
 - 開発者は、翻訳したページ、選択範囲、用語集、訳文を受け取りません。
-- 拡張機能が取得するファイルは、Hugging Face から取る PLaMo のモデルだけです。
+- 拡張機能が取得するファイルは、Hugging Face から取る PLaMo のモデルだけです。ローカル Ollama は、自分で入れたモデルを使います。
 - 設定画面でモデルを削除し、翻訳キャッシュを消せます。拡張機能を削除する方法もあります。
 
 ## この拡張機能について
@@ -92,7 +97,7 @@ Sakutto は非公式の拡張機能です。Preferred Networks, Inc. の製品�
 
 ページ、選択範囲、または拡張機能のテキスト入力ページに入力した文字の翻訳を頼んだとき、あるいは自動翻訳をオンにしたサイトでは、翻訳する文字と、入力済みの設定を読みます。
 
-その文字は、端末の中で訳文を作るためだけに使います。
+その文字は、端末の中、または設定した Ollama のサーバーの上で訳文を作るためだけに使います。
 
 ## 収集しないもの
 
@@ -101,6 +106,8 @@ Sakutto は非公式の拡張機能です。Preferred Networks, Inc. の製品�
 ## 翻訳のしくみ
 
 PLaMo 3 Translate は、拡張機能の中で、端末上で動きます。モデルのファイルは拡張機能に同梱しておらず、最初に必要になったときに Hugging Face から取得して端末に保存します。そのあとは、PLaMo の翻訳に通信は要りません。
+
+ローカル Ollama をオンにした場合は、同じ PLaMo のプロンプトを、設定にある URL の Ollama サーバーへ送ります。通常は自分のマシンの上です。サーバーには、翻訳する文字、その文字に当てはまる用語集、翻訳の設定が届きます。開発者がそれらを受け取ることはありません。Ollama のサーバーが応答しないときは、失敗として伝え、ページは原文のままにします。ブラウザ内モデルへ黙って切り替えることはありません。
 
 PLaMo が対応していない言語の組み合わせでは、Chrome 内蔵の翻訳を使います。これも端末の中で動きます。その言語の言語パックは Chrome 自身が取得します。
 
@@ -112,6 +119,8 @@ PLaMo が対応していない言語の組み合わせでは、Chrome 内蔵の�
 
 この拡張機能自身が行う通信は、Hugging Face からのモデルの取得です。Hugging Face と、ファイルを配信するネットワークには、IP アドレスと、モデルのファイルが要求されたことが伝わります。ページの本文、選択範囲、用語集、訳文は伝わりません。
 
+ローカル Ollama を選んだときは、翻訳のリクエストは設定にある Ollama の URL へ送られます。そのサーバーと、拡張機能との間の通信を見られる立場の人は、翻訳する文字を見られます。URL は、信頼できるマシンとネットワークに置いてください。
+
 Chrome ウェブストアから入れた場合、Chrome が拡張機能を更新することがあります。それは Chrome 自身の通信で、この拡張機能が行うものではありません。
 
 ## 端末に保存するもの
@@ -119,6 +128,7 @@ Chrome ウェブストアから入れた場合、Chrome が拡張機能を更新
 拡張機能は、次のものを端末に保存し、開発者へは送りません。
 
 - 翻訳先の言語や文体などの設定
+- ローカル Ollama を使うときの URL とモデル名
 - 用語集とサイトごとの規則
 - ライセンスに同意したことの記録
 - モデルのファイル
@@ -132,7 +142,7 @@ Chrome ウェブストアから入れた場合、Chrome が拡張機能を更新
 
 ## 権限
 
-インストールした時点で、すべてのサイトへのアクセスが与えられるわけではありません。今開いているタブの一回だけの翻訳には、その操作に対して Chrome が与えるアクセスを使います。特定のサイトへのアクセスは任意で、そのサイトの自動翻訳をオンにしたときだけ要求します。
+インストールした時点で、すべてのサイトへのアクセスが与えられるわけではありません。今開いているタブの一回だけの翻訳には、その操作に対して Chrome が与えるアクセスを使います。特定のサイトへのアクセスは任意で、そのサイトの自動翻訳をオンにしたときだけ要求します。ローカル Ollama は、オンにしたとき、または「アクセスを許可」を押したときにだけ、Ollama のオリジンへのアクセスを求めます。
 
 ## 限定的な利用
 

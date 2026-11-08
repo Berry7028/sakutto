@@ -41,9 +41,15 @@ PLaMo 3 Translate supports 53 languages in either direction. The source language
 
 Eleven further languages (cs, da, el, fi, kn, no, pt, ro, sv, tr, uk) are translated only by Chrome's built-in translator. Languages that PLaMo supports and Chrome does not stay untranslated until the model is ready.
 
+## Local Ollama
+
+The in-browser engine is the default. If you already run [Ollama](https://ollama.com/), Sakutto can send the same PLaMo prompt to a local server instead, which lets you use a larger checkpoint (2B, 8B, or 31B) and the machine's own GPU. Choose **Local Ollama** in the options page, set the endpoint and model name, grant access to that origin, and press **Check connection**.
+
+Ollama rejects browser origins it does not know, so its `OLLAMA_ORIGINS` environment variable has to include the extension origin. The full setup, per platform, is in [docs/OLLAMA.md](docs/OLLAMA.md) (Japanese: [docs/OLLAMA.ja.md](docs/OLLAMA.ja.md)).
+
 ## Privacy
 
-Translation runs on your device. The extension does not send page text, selections, your glossary, or translations to the developer or to any translation server, and it has no account, ads, or telemetry. Its own network request is the model download from Hugging Face. Read the policy at [PRIVACY.md](PRIVACY.md) or https://jammaru.com/sakutto/privacy/.
+Translation runs on your device. The extension does not send page text, selections, your glossary, or translations to the developer or to any translation server, and it has no account, ads, or telemetry. Its own network request is the model download from Hugging Face. If you turn on Local Ollama, page text is sent to the Ollama URL you configure; keep that server on a machine you trust. Read the policy at [PRIVACY.md](PRIVACY.md) or https://jammaru.com/sakutto/privacy/.
 
 ## Build
 
@@ -84,7 +90,7 @@ pnpm test:e2e       # local fixtures; does not download the model
 | `scripting`        | Injects the content script into the active tab after you ask for a translation.      |
 | `contextMenus`     | Adds Translate page and Translate selection to the right-click menu.                 |
 
-Optional host permissions (`https://*/*` and `http://*/*`) are requested only when you turn on automatic translation for a site. Nothing is requested for every site at install time.
+Optional host permissions (`https://*/*` and `http://*/*`) are requested only when you turn on automatic translation for a site. Nothing is requested for every site at install time. Local Ollama asks for the configured Ollama origin only, and only when you enable it.
 
 ## Licenses
 

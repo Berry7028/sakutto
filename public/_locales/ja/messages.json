@@ -217,7 +217,7 @@
     "message": "PLaMo の GGUF を取得します。まずは 2B の Q4_K_M が目安です。8B と 31B はより多くのメモリが要ります。"
   },
   "ollamaSetupOrigin": {
-    "message": "拡張機能のオリジンを許可します。Ollama は知らないブラウザのオリジンを拒否します。"
+    "message": "拡張機能のオリジンを許可します。Ollama は知らないブラウザのオリジンを拒否します。ストア版の ID は mhlbjjijfkoghmcjndgdimhdlfkhadfl です。"
   },
   "ollamaSetupChoose": {
     "message": "上の「ローカル Ollama」を選び、「接続を確認」を押します。"
