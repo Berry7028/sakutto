@@ -38,6 +38,7 @@ import {
   type ModelDeleteRequest,
   type ModelDownloadRequest,
   type ModelStatusRequest,
+  type OllamaProbeRequest,
   type TierSetRequest,
   type TranslateRequest,
 } from './protocol';
@@ -343,6 +344,9 @@ export class EngineHost {
         return;
       case 'benchmark':
         void this.handleBenchmark(port, message);
+        return;
+      case 'ollama-probe':
+        void this.handleOllamaProbe(port, message);
         return;
     }
   }
@@ -663,11 +667,22 @@ export class EngineHost {
     }
   }
 
+  private async handleOllamaProbe(
+    port: Browser.runtime.Port,
+    request: OllamaProbeRequest,
+  ): Promise<void> {
+    try {
+      const services = await this.services();
+      this.respond(port, request.requestId, await services.ollama.probeNow(true));
+    } catch (error) {
+      this.respondError(port, request.requestId, error);
+    }
+  }
+
   private async handleBenchmark(
     port: Browser.runtime.Port,
     request: BenchmarkRequest,
-  ): Promise<void> {
-    if ([...this.requests.values()].some((entry) => entry.kind === 'translate')) {
+  ): Promise<void> {    if ([...this.requests.values()].some((entry) => entry.kind === 'translate')) {
       this.respond(port, request.requestId, null);
       return;
     }

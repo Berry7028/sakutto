@@ -24,6 +24,7 @@ import {
   isModelDownloadRequest,
   isModelInspectRequest,
   isModelUseRequest,
+  isOllamaProbeMessage,
   isQualitySampleRequest,
   requestEngineProbe,
   type ModelProgressMessage,
@@ -293,6 +294,11 @@ export default defineBackground(() => {
 
     if (isQualitySampleRequest(message)) {
       void measureQuality(client).then(sendResponse, () => sendResponse(null));
+      return true;
+    }
+
+    if (isOllamaProbeMessage(message)) {
+      void client.probeOllama().then(sendResponse, () => sendResponse(null));
       return true;
     }
 

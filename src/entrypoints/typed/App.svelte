@@ -54,6 +54,8 @@
       consent: hasLicenseConsent(settings),
       modelState: engineStatus?.model.state ?? 'absent',
       plamoReady: engineStatus?.plamoReady ?? false,
+      ollamaEnabled: engineStatus?.ollama?.enabled === true,
+      ollamaReady: engineStatus?.ollama?.state === 'ready',
     }),
   );
   let chromeOnlyTarget = $derived(isChromeOnlyLanguage(targetLanguage));
@@ -313,6 +315,13 @@
             <p>{t('typedNeedsConsent')}</p>
             <button class="button" type="button" onclick={openOnboarding}>
               {t('typedOpenOnboarding')}
+            </button>
+          </div>
+        {:else if readiness === 'ollama-unavailable'}
+          <div class="gate">
+            <p>{t('typedOllamaUnavailable')}</p>
+            <button class="button" type="button" onclick={openOptions}>
+              {t('typedOpenOptions')}
             </button>
           </div>
         {:else if readiness === 'model-absent' || readiness === 'model-partial'}

@@ -70,7 +70,9 @@
   let canStart = $derived(
     translated ||
       isChromeOnlyLanguage(targetLanguage) ||
-      !modelStartBlocked(engine?.model ?? modelMark),
+      (engine?.ollama?.enabled === true
+        ? engine.ollama.state === 'ready'
+        : !modelStartBlocked(engine?.model ?? modelMark)),
   );
   let engineText = $derived.by(() => {
     const label = runtimeLabel({

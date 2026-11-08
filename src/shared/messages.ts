@@ -3,8 +3,10 @@ import { isModelId, type ModelId } from '@/engine/model/catalog';
 import {
   isEngineStatus,
   isModelStatus,
+  isOllamaStatus,
   type EngineStatus,
   type ModelStatus,
+  type OllamaStatus,
 } from '@/shared/engine-status';
 import { isEngineCapabilities, type EngineCapabilities } from './capabilities';
 import type { EngineKind } from '@/engine/types';
@@ -138,6 +140,10 @@ export interface QualitySampleRequest {
   type: 'quality:sample';
 }
 
+export interface OllamaProbeMessage {
+  type: 'ollama:probe';
+}
+
 export function isPageInfoRequest(value: unknown): value is PageInfoRequest {
   return isRecord(value) && value.type === 'page:info';
 }
@@ -237,6 +243,10 @@ export function isEngineTierRequest(value: unknown): value is EngineTierRequest 
 
 export function isQualitySampleRequest(value: unknown): value is QualitySampleRequest {
   return isRecord(value) && value.type === 'quality:sample';
+}
+
+export function isOllamaProbeMessage(value: unknown): value is OllamaProbeMessage {
+  return isRecord(value) && value.type === 'ollama:probe';
 }
 
 export function isPageInfo(value: unknown): value is PageInfo {
@@ -410,6 +420,17 @@ export async function requestQualitySample(): Promise<QualitySample | null> {
       type: 'quality:sample',
     } satisfies QualitySampleRequest);
     return isQualitySample(response) ? response : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function requestOllamaProbe(): Promise<OllamaStatus | null> {
+  try {
+    const response: unknown = await browser.runtime.sendMessage({
+      type: 'ollama:probe',
+    } satisfies OllamaProbeMessage);
+    return isOllamaStatus(response) ? response : null;
   } catch {
     return null;
   }

@@ -39,13 +39,22 @@ export function planTypedTranslation(targetLanguage: TargetLanguage): TypedPlan 
  * value names the setup step the page has to offer first.
  */
 export type TypedReadiness =
-  'ready' | 'no-consent' | 'model-absent' | 'model-partial' | 'model-busy' | 'model-error';
+  | 'ready'
+  | 'no-consent'
+  | 'ollama-unavailable'
+  | 'model-absent'
+  | 'model-partial'
+  | 'model-busy'
+  | 'model-error';
 
 export interface TypedReadinessInput {
   consent: boolean;
   modelState:
     'absent' | 'partial' | 'downloading' | 'verifying' | 'ready' | 'loading' | 'loaded' | 'error';
   plamoReady: boolean;
+  /** True when the reader chose the local Ollama server. */
+  ollamaEnabled?: boolean;
+  ollamaReady?: boolean;
 }
 
 /**
@@ -60,6 +69,13 @@ export interface TypedReadinessInput {
  */
 export function typedReadiness(input: TypedReadinessInput): TypedReadiness {
   if (!input.consent) return 'no-consent';
+
+  // With Ollama selected, the in-browser model is not the thing to download. The page
+  // waits for the local server instead, and says so when it is not answering.
+  if (input.ollamaEnabled === true) {
+    return input.ollamaReady === true ? 'ready' : 'ollama-unavailable';
+  }
+
   if (input.modelState === 'error') return 'model-error';
   if (input.modelState === 'downloading' || input.modelState === 'verifying') return 'model-busy';
   if (input.modelState === 'loading') return 'model-busy';

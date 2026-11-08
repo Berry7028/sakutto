@@ -153,14 +153,92 @@
   "optionsLead": {
     "message": "翻訳の仕方、モデル、サイトごとの動作を設定します。変更は自動で保存されます。"
   },
+  "ollamaHeading": {
+    "message": "ローカル Ollama"
+  },
+  "ollamaLead": {
+    "message": "このマシンの Ollama で、より大きな PLaMo を動かします。ブラウザ内にモデルを読み込む代わりに、同じ PLaMo のプロンプトをローカルのサーバーへ送ります。"
+  },
+  "ollamaSourceLabel": {
+    "message": "翻訳エンジン"
+  },
+  "ollamaSourceBrowser": {
+    "message": "ブラウザ内モデル"
+  },
+  "ollamaSourceOllama": {
+    "message": "ローカル Ollama"
+  },
+  "ollamaUrlLabel": {
+    "message": "Ollama の URL"
+  },
+  "ollamaModelLabel": {
+    "message": "モデル名"
+  },
+  "ollamaModelHelp": {
+    "message": "ollama list に出る名前を指定します。例: hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M"
+  },
+  "ollamaGrant": {
+    "message": "アクセスを許可"
+  },
+  "ollamaCheck": {
+    "message": "接続を確認"
+  },
+  "ollamaChecking": {
+    "message": "確認中…"
+  },
+  "ollamaStateReady": {
+    "message": "接続できました。モデルも見つかりました。"
+  },
+  "ollamaStateModelMissing": {
+    "message": "接続できましたが、モデルがありません。ollama pull で取得してください。"
+  },
+  "ollamaStateUnreachable": {
+    "message": "Ollama に接続できません。ollama serve が動いているか確認してください。"
+  },
+  "ollamaStateDisabled": {
+    "message": "Ollama は選ばれていません。"
+  },
+  "ollamaStateUnknown": {
+    "message": "まだ確認していません。"
+  },
+  "ollamaGrantFailed": {
+    "message": "この Ollama URL へのアクセスが許可されませんでした。"
+  },
+  "ollamaPrivacyNote": {
+    "message": "Ollama を選んでいる間は、ページの本文、選択範囲、入力した文字がこの URL へ送られます。信頼できるマシンに置いてください。開発者が受け取ることはありません。"
+  },
+  "ollamaSetupHeading": {
+    "message": "Ollama の設定"
+  },
+  "ollamaSetupInstall": {
+    "message": "Ollama を入れて、サーバーを起動します。"
+  },
+  "ollamaSetupPull": {
+    "message": "PLaMo の GGUF を取得します。まずは 2B の Q4_K_M が目安です。8B と 31B はより多くのメモリが要ります。"
+  },
+  "ollamaSetupOrigin": {
+    "message": "拡張機能のオリジンを許可します。Ollama は知らないブラウザのオリジンを拒否します。"
+  },
+  "ollamaSetupChoose": {
+    "message": "上の「ローカル Ollama」を選び、「接続を確認」を押します。"
+  },
+  "ollamaSetupMore": {
+    "message": "Windows と Linux を含む詳しい手順は docs/OLLAMA.md にあります。"
+  },
+  "ollamaOriginHelp": {
+    "message": "403 で失敗するときは、OLLAMA_ORIGINS に chrome-extension://* が入っていません。変更したら Ollama を再起動してください。"
+  },
+  "ollamaDocsLink": {
+    "message": "設定ガイドを読む"
+  },
   "privacyHeading": {
     "message": "プライバシー"
   },
   "privacyBody": {
-    "message": "この拡張機能は、ページの本文をサーバーへ送りません。テレメトリはありません。"
+    "message": "既定では、翻訳はこの端末の中で行います。ローカル Ollama を選んだ場合は、設定した Ollama の URL にだけページの本文を送ります。テレメトリはありません。"
   },
   "privacyDestinations": {
-    "message": "拡張機能自身の通信はモデルの取得だけです。接続は huggingface.co から始まり、Hugging Face の CDN へ転送されます。本文は含めません。言語パックは Chrome 自身が取得します。"
+    "message": "拡張機能自身の通信はモデルの取得だけです。接続は huggingface.co から始まり、Hugging Face の CDN へ転送されます。本文は含めません。Ollama を選んだときは、Ollama の設定にある URL へ翻訳リクエストを送ります。言語パックは Chrome 自身が取得します。"
   },
   "privacyPolicyLink": {
     "message": "プライバシーポリシー"
@@ -425,6 +503,23 @@
   },
   "runtimeChecking": {
     "message": "確認中…"
+  },
+  "runtimeOllama": {
+    "message": "Ollama · $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1"
+      }
+    }
+  },
+  "runtimeOllamaModelMissing": {
+    "message": "Ollama: モデルがありません"
+  },
+  "runtimeOllamaUnreachable": {
+    "message": "Ollama: 接続できません"
+  },
+  "runtimeOllamaUnknown": {
+    "message": "Ollama: 確認中"
   },
   "chromeOnlySuffix": {
     "message": "（Chrome 内蔵）"
@@ -768,6 +863,12 @@
   },
   "typedModelError": {
     "message": "PLaMo のモデルを読み込めませんでした。設定画面で確認してください。"
+  },
+  "typedOllamaUnavailable": {
+    "message": "Ollama が選ばれていますが、応答がありません。サーバーを確認するか、ブラウザ内モデルに戻してください。"
+  },
+  "typedOpenOptions": {
+    "message": "設定を開く"
   },
   "typedDownloadModel": {
     "message": "モデルをダウンロード"

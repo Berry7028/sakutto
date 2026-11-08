@@ -82,6 +82,24 @@ describe('typed readiness gate', () => {
     }
   });
 
+  it('waits for Ollama instead of offering the in-browser download', () => {
+    expect(typedReadiness({ ...base, ollamaEnabled: true, ollamaReady: true })).toBe('ready');
+    expect(typedReadiness({ ...base, ollamaEnabled: true, ollamaReady: false })).toBe(
+      'ollama-unavailable',
+    );
+    // The in-browser model is irrelevant while Ollama is selected, even if it is ready.
+    expect(
+      typedReadiness({
+        ...base,
+        modelState: 'absent',
+        plamoReady: false,
+        ollamaEnabled: true,
+        ollamaReady: false,
+      }),
+    ).toBe('ollama-unavailable');
+    expect(typedReadiness({ ...base, consent: false, ollamaEnabled: true })).toBe('no-consent');
+  });
+
   it('never offers the built-in translator for typed text', () => {
     // A Chrome-only target has no PLaMo path. The page is refused in the UI instead of
     // quietly switching engines, which would show a non-PLaMo translation in a PLaMo box.

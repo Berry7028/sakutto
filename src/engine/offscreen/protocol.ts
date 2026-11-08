@@ -143,6 +143,11 @@ export interface BenchmarkRequest {
   requestId: string;
 }
 
+export interface OllamaProbeRequest {
+  type: 'ollama-probe';
+  requestId: string;
+}
+
 export type EngineHostRequest =
   | TranslateRequest
   | CancelRequest
@@ -156,7 +161,8 @@ export type EngineHostRequest =
   | ModelStatusRequest
   | CacheClearRequest
   | TierSetRequest
-  | BenchmarkRequest;
+  | BenchmarkRequest
+  | OllamaProbeRequest;
 
 export interface ChunkEvent {
   type: 'chunk';
@@ -317,6 +323,7 @@ export function isEngineHostRequest(value: unknown): value is EngineHostRequest 
       return isModelId(value.modelId);
     case 'cache-clear':
     case 'benchmark':
+    case 'ollama-probe':
       return true;
     case 'tier-set':
       return isTierPreference(value.tier);

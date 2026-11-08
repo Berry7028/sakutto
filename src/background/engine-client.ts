@@ -18,6 +18,7 @@ import {
   type StatusRequest,
   type TierSetRequest,
   type TranslateRequest,
+  type OllamaProbeRequest,
 } from '@/engine/offscreen/protocol';
 import { ChunkStream } from '@/engine/queue/chunk-stream';
 import type { TranslateOptions, TranslateSegment, TranslationChunk } from '@/engine/types';
@@ -25,8 +26,10 @@ import { advanceModelStatus } from '@/shared/model-progress';
 import {
   isEngineStatus,
   isModelStatus,
+  isOllamaStatus,
   type EngineStatus,
   type ModelStatus,
+  type OllamaStatus,
 } from '@/shared/engine-status';
 import type { TierPreference } from '@/shared/settings';
 import type { OffscreenController } from './offscreen-lifecycle';
@@ -41,7 +44,8 @@ type RequestWithoutId =
   | Omit<ModelStatusRequest, 'requestId'>
   | Omit<CacheClearRequest, 'requestId'>
   | Omit<TierSetRequest, 'requestId'>
-  | Omit<BenchmarkRequest, 'requestId'>;
+  | Omit<BenchmarkRequest, 'requestId'>
+  | Omit<OllamaProbeRequest, 'requestId'>;
 
 const DOWNLOAD_ATTACH_ATTEMPTS = 3;
 const DOWNLOAD_ATTACH_DELAY_MS = 500;
@@ -145,6 +149,15 @@ export class EngineClient {
     if (value === null) return null;
     if (!isMilliseconds(value)) throw hostError('The engine host returned an invalid benchmark.');
     return value.milliseconds;
+  }
+
+  async probeOllama(): Promise<OllamaStatus> {
+    const value = await this.request(
+      { type: 'ollama-probe' },
+      { timeoutMs: 10_000, retry: false },
+    );
+    if (!isOllamaStatus(value)) throw hostError('The engine host returned an invalid Ollama status.');
+    return value;
   }
 
   async downloadModel(
