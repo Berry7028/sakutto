@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EngineError } from '@/engine/errors';
 import { OllamaClient, ollamaHasModel } from '@/engine/ollama/client';
 import { OllamaEngine } from '@/engine/ollama/engine';
@@ -48,6 +48,26 @@ function finalChunks(chunks: readonly TranslationChunk[]): TranslationChunk[] {
 }
 
 describe('OllamaClient', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('binds the global fetch so calling it as a property keeps the window receiver', async () => {
+    const receivers: unknown[] = [];
+    vi.stubGlobal('fetch', function (this: unknown) {
+      receivers.push(this);
+      return Promise.resolve(new Response('{"models":[]}'));
+    });
+
+    const client = new OllamaClient({
+      baseUrl: 'http://127.0.0.1:11434',
+      model: 'plamo-3-translate:2b',
+    });
+    await client.listModels(new AbortController().signal);
+
+    expect(receivers).toEqual([globalThis]);
+  });
+
   it('sends the raw PFML3 prompt and streams the response tokens', async () => {
     const fetchImpl = fakeFetch(() =>
       ndjson([

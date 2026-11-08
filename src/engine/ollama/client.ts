@@ -127,7 +127,9 @@ export class OllamaClient {
   constructor(options: OllamaClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/u, '');
     this.model = options.model;
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Calling a native fetch through an object property throws "Illegal invocation" in
+    // Chrome, because the receiver is not the window. Bind it once here.
+    this.fetchImpl = options.fetchImpl ?? fetch.bind(globalThis);
   }
 
   get endpoint(): string {
