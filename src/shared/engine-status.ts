@@ -14,6 +14,16 @@ export interface ModelStatus {
   error?: string;
 }
 
+export type OllamaState =
+  'disabled' | 'unknown' | 'checking' | 'ready' | 'unreachable' | 'model-missing';
+
+export interface OllamaStatus {
+  enabled: boolean;
+  url: string;
+  model: string;
+  state: OllamaState;
+}
+
 export interface EngineStatus {
   model: ModelStatus;
   backend: BackendKind | null;
@@ -25,6 +35,8 @@ export interface EngineStatus {
   plamoReady: boolean;
   chromeSupported: boolean;
   active: EngineKind | null;
+  /** Present when the reader chose the local Ollama engine. */
+  ollama?: OllamaStatus;
 }
 
 const MODEL_STATES: ReadonlySet<string> = new Set<ModelState>([
@@ -40,7 +52,15 @@ const MODEL_STATES: ReadonlySet<string> = new Set<ModelState>([
 
 const BACKENDS: ReadonlySet<string> = new Set<BackendKind>(['webgpu', 'cpu-wasm']);
 const TIERS: ReadonlySet<string> = new Set<ComputeTier>(['g', 'c8', 'c4']);
-const ENGINES: ReadonlySet<string> = new Set<EngineKind>(['plamo', 'chrome']);
+const ENGINES: ReadonlySet<string> = new Set<EngineKind>(['plamo', 'ollama', 'chrome']);
+const OLLAMA_STATES: ReadonlySet<string> = new Set<OllamaState>([
+  'disabled',
+  'unknown',
+  'checking',
+  'ready',
+  'unreachable',
+  'model-missing',
+]);
 
 export function isModelStatus(value: unknown): value is ModelStatus {
   if (typeof value !== 'object' || value === null) return false;
@@ -99,5 +119,18 @@ export function isEngineStatus(value: unknown): value is EngineStatus {
   ) {
     return false;
   }
+  if (record.ollama !== undefined && !isOllamaStatus(record.ollama)) return false;
   return true;
+}
+
+export function isOllamaStatus(value: unknown): value is OllamaStatus {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.enabled === 'boolean' &&
+    typeof record.url === 'string' &&
+    typeof record.model === 'string' &&
+    typeof record.state === 'string' &&
+    OLLAMA_STATES.has(record.state)
+  );
 }
