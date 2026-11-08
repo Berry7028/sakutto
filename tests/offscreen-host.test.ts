@@ -135,6 +135,40 @@ describe('EngineHost', () => {
     expect(unload).toHaveBeenCalled();
   });
 
+  it('warms Ollama with the settings the background pushed over the port', async () => {
+    const { services } = createServices();
+    const probeNow = vi.fn(async () => ({
+      enabled: true,
+      url: 'http://127.0.0.1:11434',
+      model: 'plamo-3-translate:2b',
+      state: 'ready' as const,
+    }));
+    (services as unknown as { ollama: unknown }).ollama = { probeNow };
+
+    const host = createHost(services);
+    const port = new FakePort();
+    host.handlePort(port.port);
+
+    port.emit({
+      type: 'engine-settings',
+      settings: {
+        engineSource: 'ollama',
+        ollamaUrl: 'http://127.0.0.1:11434',
+        ollamaModel: 'plamo-3-translate:2b',
+        tier: 'auto',
+        idleMinutes: 5,
+        targetLanguage: 'ja',
+        form: 'polite',
+      },
+    });
+    port.emit({ type: 'model-warm', requestId: 'w1' });
+    await flushTasks();
+    await flushTasks();
+
+    expect(probeNow).toHaveBeenCalledTimes(1);
+    expect(port.messagesOfType('response')).toHaveLength(1);
+  });
+
   it('keeps downloading after the starting port disconnects', async () => {
     const { services, download } = createServices();
     const release = deferred<void>();

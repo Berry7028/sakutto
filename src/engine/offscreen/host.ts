@@ -1,10 +1,8 @@
 import { browser, type Browser } from 'wxt/browser';
-import { hasLicenseConsent } from '@/shared/agreement';
 import { probeCapabilities } from '@/shared/capabilities';
 import { canonicalLanguage } from '@/shared/languages';
 import type { EngineStatus, ModelStatus } from '@/shared/engine-status';
 import { advanceModelStatus } from '@/shared/model-progress';
-import { loadSettings } from '@/shared/storage';
 import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, type TierPreference } from '@/shared/settings';
 import { MemoryTranslationCacheStore, IndexedDbTranslationCacheStore } from '../cache/store';
 import { CachingEngine } from '../cache/caching-engine';
@@ -28,9 +26,11 @@ import {
   deserializeTranslateOptions,
   errorPayload,
   isEngineHostRequest,
+  isEngineSettingsMessage,
   type BenchmarkRequest,
   type CacheClearRequest,
   type EngineHostMessage,
+  type EngineSettingsSnapshot,
   type ModelDeleteRequest,
   type ModelDownloadRequest,
   type ModelStatusRequest,
@@ -138,22 +138,37 @@ export class EngineHost {
   private prewarmKey: string | null = null;
   /** The probe offered WebGPU but the model could not be placed on it. */
   private gpuFallback = false;
+  /**
+   * The stored settings, as the background last pushed them.
+   *
+   * An offscreen document has no `chrome.storage`, so reading storage from here always threw
+   * and every caller fell back to its default. That is what made the options page say "Ollama
+   * is not selected" while the picker showed Local Ollama: the probe asked a host that could
+   * not see the choice. The background sends a snapshot on connect and again on every change.
+   */
+  private settings: EngineSettingsSnapshot | null = null;
+  /** A pending licence answer from the background, and whether one has been granted. */
+  private consent: Promise<boolean> | null = null;
+  private granted = false;
 
   constructor(options: EngineHostOptions = {}) {
     this.idleReleaseMs = options.idleReleaseMs ?? IDLE_RELEASE_MS;
     this.openServices = options.createServices ?? (() => this.createServices());
+  }
 
-    if (browser.storage?.onChanged) {
-      browser.storage.onChanged.addListener((changes, area) => {
-        if (area !== 'local' || !changes.settings) return;
-        this.touch();
+  /**
+   * Applies a settings snapshot. Switching to Ollama drops the in-browser checkpoint so the
+   * larger local model has the memory, but only when a translation is not in flight and the
+   * services exist at all — a snapshot that arrives before the first request must not load
+   * the whole runtime just to unload it.
+   */
+  private applySettings(next: EngineSettingsSnapshot): void {
+    const previous = this.settings;
+    this.settings = next;
+    this.touch();
 
-        const before = changes.settings.oldValue as { engineSource?: unknown } | undefined;
-        const after = changes.settings.newValue as { engineSource?: unknown } | undefined;
-        if (after?.engineSource === 'ollama' && before?.engineSource !== 'ollama') {
-          void this.releaseBrowserModel();
-        }
-      });
+    if (next.engineSource === 'ollama' && previous?.engineSource !== 'ollama') {
+      if (this.servicesTask) void this.releaseBrowserModel();
     }
   }
 
@@ -194,8 +209,7 @@ export class EngineHost {
       webgpu: capabilities.webgpu === 'ready',
       hardwareConcurrency: capabilities.hardwareConcurrency,
     };
-    const stored = browser.storage?.local ? await loadSettings().catch(() => null) : null;
-    const selection = selectionForTier(stored?.tier ?? 'auto', probe);
+    const selection = selectionForTier(this.settings?.tier ?? 'auto', probe);
     const selectionState = { current: selection };
     const store = await OpfsModelFileStore.open();
     const manager = new ModelManager({ store, createRuntime: createWllamaRuntime });
@@ -219,7 +233,7 @@ export class EngineHost {
 
     const ollama = new OllamaEngine({
       loadConfig: async () => {
-        const settings = await loadSettings().catch(() => null);
+        const settings = this.settings;
         return {
           enabled: settings?.engineSource === 'ollama',
           url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
@@ -234,10 +248,7 @@ export class EngineHost {
       plamo: new CachingEngine(lazy, cache, () => this.activeModelId),
       ollama,
       chrome: chromeForCache,
-      preferOllama: async () => {
-        const settings = await loadSettings().catch(() => null);
-        return settings?.engineSource === 'ollama';
-      },
+      preferOllama: async () => this.settings?.engineSource === 'ollama',
       plamoSupports: (src, tgt) =>
         canonicalLanguage(tgt) !== null &&
         (src === undefined || src.trim().length === 0 || canonicalLanguage(src) !== null),
@@ -290,6 +301,10 @@ export class EngineHost {
   }
 
   private async handleMessage(port: Browser.runtime.Port, message: unknown): Promise<void> {
+    if (isEngineSettingsMessage(message)) {
+      this.applySettings(message.settings);
+      return;
+    }
     if (!isEngineHostRequest(message)) return;
 
     switch (message.type) {
@@ -391,9 +406,8 @@ export class EngineHost {
 
     try {
       const services = await this.services();
-      const settings = await loadSettings().catch(() => null);
 
-      if (settings?.engineSource === 'ollama') {
+      if (this.settings?.engineSource === 'ollama') {
         const status = await services.ollama.probeNow();
         if (status.state === 'model-missing') {
           throw new EngineError(
@@ -719,9 +733,18 @@ export class EngineHost {
     }
   }
 
+  /**
+   * Translates the paragraph the quality sample uses, so the first real page does not pay
+   * for a cold model. The language and the form come from the pushed snapshot; the licence
+   * gate comes from the background, because an offscreen document cannot read storage and a
+   * reader who has not agreed must not spend GPU time.
+   */
   private async prewarmFrequent(services: EngineServices): Promise<void> {
-    const settings = await loadSettings().catch(() => null);
-    if (!hasLicenseConsent(settings)) return;
+    const settings = this.settings;
+    if (!settings) return;
+
+    const consent = await this.requestConsent();
+    if (!consent) return;
 
     const request = prewarmRequest(settings.targetLanguage);
     if (!request) return;
@@ -736,9 +759,6 @@ export class EngineHost {
     this.touch();
 
     try {
-      const glossary = settings.glossary.filter(
-        (entry) => entry.source.trim().length > 0 && entry.target.trim().length > 0,
-      );
       for (const segment of request.segments) {
         if (controller.signal.aborted) break;
         for await (const chunk of services.router.translate([segment], {
@@ -747,7 +767,6 @@ export class EngineHost {
           form: settings.form,
           priority: 99,
           signal: controller.signal,
-          ...(glossary.length > 0 ? { glossary } : {}),
         })) {
           if (controller.signal.aborted) break;
           void chunk;
@@ -759,6 +778,33 @@ export class EngineHost {
     } finally {
       this.requests.delete(requestId);
       this.touch();
+    }
+  }
+
+  /**
+   * Asks the background whether the reader has accepted the PLaMo licence. A granted answer
+   * is kept for the lifetime of the document, because consent is written once and never
+   * withdrawn; a refusal is asked again, since the reader may agree a moment later.
+   */
+  private requestConsent(): Promise<boolean> {
+    if (this.granted) return Promise.resolve(true);
+    if (this.consent !== null) return this.consent;
+
+    const task = this.askConsent().finally(() => {
+      if (this.consent === task) this.consent = null;
+    });
+    this.consent = task;
+    return task;
+  }
+
+  private async askConsent(): Promise<boolean> {
+    try {
+      const response: unknown = await browser.runtime.sendMessage({ type: 'licence:consent' });
+      if (response === true) this.granted = true;
+      return response === true;
+    } catch {
+      // A background that cannot answer is not a licence: no prewarm.
+      return false;
     }
   }
 
@@ -784,10 +830,9 @@ export class EngineHost {
   }
 
   private resolveIdleMs(): Promise<number> {
-    if (!browser.storage?.local) return Promise.resolve(this.idleReleaseMs);
-    return loadSettings()
-      .then((settings) => (settings.idleMinutes === 0 ? 0 : settings.idleMinutes * 60_000))
-      .catch(() => this.idleReleaseMs);
+    const settings = this.settings;
+    if (!settings) return Promise.resolve(this.idleReleaseMs);
+    return Promise.resolve(settings.idleMinutes === 0 ? 0 : settings.idleMinutes * 60_000);
   }
 
   private async releaseIdle(): Promise<void> {

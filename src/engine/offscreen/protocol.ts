@@ -10,8 +10,15 @@ import type {
 } from '../types';
 import { isModelStatus, type ModelStatus } from '../../shared/engine-status';
 import { MAX_GLOSSARY_MESSAGE_ENTRIES, MAX_GLOSSARY_TEXT } from '../../shared/glossary';
-import { isTargetLanguage } from '../../shared/languages';
-import { isTierPreference, type TierPreference } from '../../shared/settings';
+import { isTargetLanguage, type TargetLanguage } from '../../shared/languages';
+import {
+  isEngineSource,
+  isIdleMinutes,
+  isTierPreference,
+  type EngineSource,
+  type IdleMinutes,
+  type TierPreference,
+} from '../../shared/settings';
 
 export const ENGINE_HOST_PORT = 'sakutto:engine-host';
 export const TRANSLATION_PORT = 'sakutto:translate';
@@ -146,6 +153,47 @@ export interface BenchmarkRequest {
 export interface OllamaProbeRequest {
   type: 'ollama-probe';
   requestId: string;
+}
+
+/**
+ * The stored settings the offscreen document needs to choose an engine.
+ *
+ * An offscreen document cannot use `chrome.storage` at all: `chrome.storage.local` is
+ * undefined there, so `loadSettings()` threw, every read was swallowed by a `catch`, and the
+ * host behaved as if the reader had never picked Ollama. The background is the only context
+ * that can read storage, so it sends this snapshot over the engine port before any request
+ * that depends on it. A port delivers messages in order, which keeps the snapshot ahead of
+ * the request it belongs to.
+ */
+export interface EngineSettingsSnapshot {
+  engineSource: EngineSource;
+  ollamaUrl: string;
+  ollamaModel: string;
+  tier: TierPreference;
+  idleMinutes: IdleMinutes;
+  targetLanguage: TargetLanguage;
+  form: Formality;
+}
+
+/** Pushed by the background; it carries no request id because nothing answers it. */
+export interface EngineSettingsMessage {
+  type: 'engine-settings';
+  settings: EngineSettingsSnapshot;
+}
+
+export function isEngineSettingsMessage(value: unknown): value is EngineSettingsMessage {
+  if (!isRecord(value) || value.type !== 'engine-settings') return false;
+  const settings = value.settings;
+  if (!isRecord(settings)) return false;
+  return (
+    isEngineSource(settings.engineSource) &&
+    typeof settings.ollamaUrl === 'string' &&
+    typeof settings.ollamaModel === 'string' &&
+    isTierPreference(settings.tier) &&
+    isIdleMinutes(settings.idleMinutes) &&
+    isTargetLanguage(settings.targetLanguage) &&
+    (settings.form === 'polite' || settings.form === 'plain')
+  );
 }
 
 export type EngineHostRequest =
