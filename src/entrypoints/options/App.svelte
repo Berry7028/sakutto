@@ -21,7 +21,7 @@
   import {
     DEFAULT_OLLAMA_URL,
     normalizeOllamaUrl,
-    ollamaOrigin,
+    ollamaPermissionPattern,
     type IdleMinutes,
     type Settings,
     type SettingsPatch,
@@ -193,11 +193,13 @@
    * Chrome only lets an extension reach the Ollama origin after the reader grants it. The
    * request has to run inside the click or change event, so it is not wrapped in a timeout.
    */
-  async function requestOllamaPermission(): Promise<boolean> {
-    const origin = ollamaOrigin(settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL);
-    if (!origin) return false;
+  async function requestOllamaPermission(
+    url = settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+  ): Promise<boolean> {
+    const pattern = ollamaPermissionPattern(url);
+    if (!pattern) return false;
     try {
-      const granted = await browser.permissions.request({ origins: [`${origin}/*`] });
+      const granted = await browser.permissions.request({ origins: [pattern] });
       ollamaPermission = granted ? 'granted' : 'denied';
       return granted;
     } catch {
@@ -208,7 +210,15 @@
 
   async function checkOllama() {
     ollamaChecking = true;
-    ollamaStatus = await requestOllamaProbe();
+    const status = await requestOllamaProbe();
+    ollamaStatus =
+      status ??
+      ({
+        enabled: true,
+        url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+        model: settings?.ollamaModel ?? '',
+        state: 'unreachable',
+      } satisfies OllamaStatus);
     ollamaChecking = false;
   }
 
@@ -224,11 +234,11 @@
     const input = event.currentTarget as HTMLInputElement;
     const ollamaUrl = normalizeOllamaUrl(input.value);
     input.value = ollamaUrl;
-    await updateSettings({ ollamaUrl });
     if (settings?.engineSource === 'ollama') {
-      await requestOllamaPermission();
-      void checkOllama();
+      await requestOllamaPermission(ollamaUrl);
     }
+    await updateSettings({ ollamaUrl });
+    if (settings?.engineSource === 'ollama') void checkOllama();
   }
 
   async function changeOllamaModel(event: Event) {
@@ -454,7 +464,7 @@
         </label>
         <p class="muted help">{t('ollamaModelHelp')}</p>
         <div class="ollama-actions">
-          <button class="button secondary" type="button" onclick={requestOllamaPermission}>
+          <button class="button secondary" type="button" onclick={() => requestOllamaPermission()}>
             {t('ollamaGrant')}
           </button>
           <button
@@ -476,8 +486,10 @@
           <ol class="steps">
             <li>
               <p>{t('ollamaSetupInstall')}</p>
-              <pre><code>brew install ollama
-ollama serve</code></pre>
+              <pre><code
+                  >brew install ollama
+ollama serve</code
+                ></pre>
             </li>
             <li>
               <p>{t('ollamaSetupPull')}</p>
@@ -485,8 +497,11 @@ ollama serve</code></pre>
             </li>
             <li>
               <p>{t('ollamaSetupOrigin')}</p>
-              <pre><code>launchctl setenv OLLAMA_ORIGINS "chrome-extension://*"
-# restart Ollama after this</code></pre>
+              <pre><code
+                  >launchctl setenv OLLAMA_ORIGINS "chrome-extension://mhlbjjijfkoghmcjndgdimhdlfkhadfl"
+# self-built: use the ID on chrome://extensions
+# then restart Ollama</code
+                ></pre>
             </li>
             <li>
               <p>{t('ollamaSetupChoose')}</p>

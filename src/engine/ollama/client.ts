@@ -186,12 +186,7 @@ export class OllamaClient {
   }
 
   async listModels(signal: AbortSignal): Promise<string[]> {
-    const opened = await this.open(
-      '/api/tags',
-      { method: 'GET' },
-      signal,
-      OLLAMA_PROBE_TIMEOUT_MS,
-    );
+    const opened = await this.open('/api/tags', { method: 'GET' }, signal, OLLAMA_PROBE_TIMEOUT_MS);
 
     try {
       if (!opened.response.ok) throw await httpError(opened.response);
@@ -241,11 +236,9 @@ export class OllamaClient {
       close();
       if (signal.aborted) throw abortError();
       if (isAbortError(error)) {
-        throw new EngineError(
-          'ollama-unavailable',
-          'The Ollama server did not answer in time.',
-          { cause: error },
-        );
+        throw new EngineError('ollama-unavailable', 'The Ollama server did not answer in time.', {
+          cause: error,
+        });
       }
       throw new EngineError('ollama-unavailable', 'The Ollama server could not be reached.', {
         cause: error,

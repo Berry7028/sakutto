@@ -8,6 +8,8 @@ import { loadSettings } from '@/shared/storage';
 import {
   DEFAULT_OLLAMA_MODEL,
   DEFAULT_OLLAMA_URL,
+  type EngineSource,
+  type Settings,
   type TierPreference,
 } from '@/shared/settings';
 import { MemoryTranslationCacheStore, IndexedDbTranslationCacheStore } from '../cache/store';
@@ -142,6 +144,16 @@ export class EngineHost {
   private prewarmKey: string | null = null;
   /** The probe offered WebGPU but the model could not be placed on it. */
   private gpuFallback = false;
+  /**
+   * The engine choice is cached here rather than read from storage on every segment. The
+   * storage listener below keeps it current, and the Ollama engine reads the same object.
+   */
+  private engineSource: EngineSource = 'browser';
+  private ollamaConfig = {
+    enabled: false,
+    url: DEFAULT_OLLAMA_URL,
+    model: DEFAULT_OLLAMA_MODEL,
+  };
 
   constructor(options: EngineHostOptions = {}) {
     this.idleReleaseMs = options.idleReleaseMs ?? IDLE_RELEASE_MS;
@@ -154,11 +166,23 @@ export class EngineHost {
 
         const before = changes.settings.oldValue as { engineSource?: unknown } | undefined;
         const after = changes.settings.newValue as { engineSource?: unknown } | undefined;
+        void loadSettings()
+          .then((settings) => this.applySettings(settings))
+          .catch(() => undefined);
         if (after?.engineSource === 'ollama' && before?.engineSource !== 'ollama') {
           void this.releaseBrowserModel();
         }
       });
     }
+  }
+
+  private applySettings(settings: Settings | null): void {
+    this.engineSource = settings?.engineSource === 'ollama' ? 'ollama' : 'browser';
+    this.ollamaConfig = {
+      enabled: this.engineSource === 'ollama',
+      url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+      model: settings?.ollamaModel ?? DEFAULT_OLLAMA_MODEL,
+    };
   }
 
   handlePort(port: Browser.runtime.Port): void {
@@ -199,6 +223,7 @@ export class EngineHost {
       hardwareConcurrency: capabilities.hardwareConcurrency,
     };
     const stored = browser.storage?.local ? await loadSettings().catch(() => null) : null;
+    this.applySettings(stored);
     const selection = selectionForTier(stored?.tier ?? 'auto', probe);
     const selectionState = { current: selection };
     const store = await OpfsModelFileStore.open();
@@ -222,14 +247,7 @@ export class EngineHost {
     const lazy = new LazyInBrowserEngine({ loadRuntime: load });
 
     const ollama = new OllamaEngine({
-      loadConfig: async () => {
-        const settings = await loadSettings().catch(() => null);
-        return {
-          enabled: settings?.engineSource === 'ollama',
-          url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
-          model: settings?.ollamaModel ?? DEFAULT_OLLAMA_MODEL,
-        };
-      },
+      loadConfig: async () => this.ollamaConfig,
     });
 
     const chromeForCache = chrome.available ? new CachingEngine(chrome, cache, 'chrome') : null;
@@ -238,10 +256,7 @@ export class EngineHost {
       plamo: new CachingEngine(lazy, cache, () => this.activeModelId),
       ollama,
       chrome: chromeForCache,
-      preferOllama: async () => {
-        const settings = await loadSettings().catch(() => null);
-        return settings?.engineSource === 'ollama';
-      },
+      preferOllama: async () => this.engineSource === 'ollama',
       plamoSupports: (src, tgt) =>
         canonicalLanguage(tgt) !== null &&
         (src === undefined || src.trim().length === 0 || canonicalLanguage(src) !== null),
@@ -395,10 +410,9 @@ export class EngineHost {
 
     try {
       const services = await this.services();
-      const settings = await loadSettings().catch(() => null);
 
-      if (settings?.engineSource === 'ollama') {
-        const status = await services.ollama.probeNow(true);
+      if (this.engineSource === 'ollama') {
+        const status = await services.ollama.probeNow();
         if (status.state === 'model-missing') {
           throw new EngineError(
             'ollama-model-missing',
@@ -682,7 +696,8 @@ export class EngineHost {
   private async handleBenchmark(
     port: Browser.runtime.Port,
     request: BenchmarkRequest,
-  ): Promise<void> {    if ([...this.requests.values()].some((entry) => entry.kind === 'translate')) {
+  ): Promise<void> {
+    if ([...this.requests.values()].some((entry) => entry.kind === 'translate')) {
       this.respond(port, request.requestId, null);
       return;
     }

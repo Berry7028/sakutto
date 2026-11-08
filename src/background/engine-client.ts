@@ -152,11 +152,9 @@ export class EngineClient {
   }
 
   async probeOllama(): Promise<OllamaStatus> {
-    const value = await this.request(
-      { type: 'ollama-probe' },
-      { timeoutMs: 10_000, retry: false },
-    );
-    if (!isOllamaStatus(value)) throw hostError('The engine host returned an invalid Ollama status.');
+    const value = await this.request({ type: 'ollama-probe' }, { timeoutMs: 10_000, retry: false });
+    if (!isOllamaStatus(value))
+      throw hostError('The engine host returned an invalid Ollama status.');
     return value;
   }
 

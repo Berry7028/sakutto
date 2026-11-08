@@ -15,6 +15,7 @@ import {
   normalizeOllamaUrl,
   normalizeSettings,
   ollamaOrigin,
+  ollamaPermissionPattern,
   type Settings,
 } from '@/shared/settings';
 
@@ -234,9 +235,7 @@ describe('Ollama settings', () => {
   it('defaults to the in-browser engine and the model card example', () => {
     expect(DEFAULT_SETTINGS.engineSource).toBe('browser');
     expect(DEFAULT_SETTINGS.ollamaUrl).toBe('http://127.0.0.1:11434');
-    expect(DEFAULT_SETTINGS.ollamaModel).toBe(
-      'hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M',
-    );
+    expect(DEFAULT_SETTINGS.ollamaModel).toBe('hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M');
   });
 
   it('keeps an Ollama choice and its endpoint across a reload', () => {
@@ -275,6 +274,13 @@ describe('Ollama settings', () => {
     expect(ollamaOrigin('not a url')).toBe('http://127.0.0.1:11434');
   });
 
+  it('builds a Chrome match pattern without the port', () => {
+    // Match patterns do not carry a port; the port-less host pattern covers every port.
+    expect(ollamaPermissionPattern('http://127.0.0.1:11434')).toBe('http://127.0.0.1/*');
+    expect(ollamaPermissionPattern('https://gpu.example/ollama/')).toBe('https://gpu.example/*');
+    expect(ollamaPermissionPattern('not a url')).toBe('http://127.0.0.1/*');
+  });
+
   it('repairs an empty or multi-line model name', () => {
     expect(normalizeOllamaModel('  plamo-3-translate:8b  ')).toBe('plamo-3-translate:8b');
     expect(normalizeOllamaModel('')).toBe(DEFAULT_OLLAMA_MODEL);
@@ -284,10 +290,8 @@ describe('Ollama settings', () => {
 
   it('falls back to the browser engine for an unknown source', () => {
     expect(
-      normalizeSettings(
-        { schemaVersion: SETTINGS_SCHEMA_VERSION, engineSource: 'cloud' },
-        'en',
-      ).engineSource,
+      normalizeSettings({ schemaVersion: SETTINGS_SCHEMA_VERSION, engineSource: 'cloud' }, 'en')
+        .engineSource,
     ).toBe('browser');
   });
 });

@@ -17,9 +17,7 @@ function fakeFetch(
   const calls: FetchCall[] = [];
   const impl = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const body =
-      typeof init?.body === 'string'
-        ? (JSON.parse(init.body) as Record<string, unknown>)
-        : null;
+      typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null;
     const call = { url: String(input), init: init ?? {}, body };
     calls.push(call);
     return handler(call);
@@ -29,10 +27,10 @@ function fakeFetch(
 
 function ndjson(lines: readonly string[]): Response {
   const encoder = new TextEncoder();
-  return new Response(
-    streamOf(lines.map((line) => encoder.encode(`${line}\n`))),
-    { status: 200, headers: { 'content-type': 'application/x-ndjson' } },
-  );
+  return new Response(streamOf(lines.map((line) => encoder.encode(`${line}\n`))), {
+    status: 200,
+    headers: { 'content-type': 'application/x-ndjson' },
+  });
 }
 
 function options(overrides: Partial<TranslateOptions> = {}): TranslateOptions {
@@ -237,14 +235,10 @@ describe('OllamaEngine', () => {
     });
     const ollama = engine(fetchImpl);
 
-    const chunks = await collectChunks(
-      ollama.translate([{ id: 'a', text: 'Hello.' }], options()),
-    );
+    const chunks = await collectChunks(ollama.translate([{ id: 'a', text: 'Hello.' }], options()));
 
     expect(chunks.map((chunk) => chunk.textDelta ?? '').join('')).toBe('こんにちは');
-    expect(finalChunks(chunks)).toEqual([
-      { id: 'a', final: 'こんにちは', engine: 'ollama' },
-    ]);
+    expect(finalChunks(chunks)).toEqual([{ id: 'a', final: 'こんにちは', engine: 'ollama' }]);
     expect(prompts[0]).toContain(
       '<|plamo:tag|>output<|plamo:key|>lang<|plamo:val|>ja<|plamo:key|>form<|plamo:val|>polite<|plamo:msg|>',
     );

@@ -178,6 +178,21 @@ export function ollamaOrigin(value: string): string | null {
   }
 }
 
+/**
+ * The match pattern Chrome can grant for the Ollama host. Match patterns do not carry a
+ * port, so `http://127.0.0.1/*` covers `http://127.0.0.1:11434` and every other port on
+ * that host. Requesting `http://127.0.0.1:11434/*` is rejected as an invalid pattern.
+ */
+export function ollamaPermissionPattern(value: string): string | null {
+  try {
+    const url = new URL(normalizeOllamaUrl(value));
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return `${url.protocol}//${url.hostname}/*`;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeOllamaModel(value: unknown): string {
   if (typeof value !== 'string') return DEFAULT_OLLAMA_MODEL;
   const trimmed = value.trim();
