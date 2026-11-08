@@ -5,13 +5,17 @@ import { canonicalLanguage } from '@/shared/languages';
 import type { EngineStatus, ModelStatus } from '@/shared/engine-status';
 import { advanceModelStatus } from '@/shared/model-progress';
 import { loadSettings } from '@/shared/storage';
-import type { TierPreference } from '@/shared/settings';
+import {
+  DEFAULT_OLLAMA_MODEL,
+  DEFAULT_OLLAMA_URL,
+  type TierPreference,
+} from '@/shared/settings';
 import { MemoryTranslationCacheStore, IndexedDbTranslationCacheStore } from '../cache/store';
 import { CachingEngine } from '../cache/caching-engine';
 import { TranslationCache } from '../cache/cache';
 import { prewarmRequest } from '../cache/prewarm';
 import { ChromeTranslatorEngine } from '../chrome/translator';
-import { isAbortError } from '../errors';
+import { isAbortError, EngineError } from '../errors';
 import { selectionForTier, cpuFallback, type BackendSelection } from '../in-browser/backend';
 import { LazyInBrowserEngine } from '../in-browser/lazy-engine';
 import { createWllamaRuntime, type LlamaRuntime } from '../in-browser/runtime';
@@ -20,6 +24,7 @@ import { OpfsModelFileStore } from '../model/file-store';
 import { ModelManager, type LoadedModel } from '../model/manager';
 import type { DownloadProgress } from '../model/download';
 import { QUALITY_PARAGRAPH } from '../model/suggestion';
+import { OllamaEngine } from '../ollama/engine';
 import { buildTranslationPrompt } from '../prompt/pfml3';
 import { RoutingEngine, type PairSupport } from '../router';
 import {
@@ -45,6 +50,7 @@ export interface EngineServices {
   router: RoutingEngine;
   chrome: ChromeTranslatorEngine;
   lazy: LazyInBrowserEngine;
+  ollama: OllamaEngine;
   /** Loads the active model, dropping to the CPU tier when the GPU cannot take it. */
   load: (signal: AbortSignal) => Promise<LoadedModel>;
   readonly selection: BackendSelection;
@@ -142,7 +148,14 @@ export class EngineHost {
 
     if (browser.storage?.onChanged) {
       browser.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && changes.settings) this.touch();
+        if (area !== 'local' || !changes.settings) return;
+        this.touch();
+
+        const before = changes.settings.oldValue as { engineSource?: unknown } | undefined;
+        const after = changes.settings.newValue as { engineSource?: unknown } | undefined;
+        if (after?.engineSource === 'ollama' && before?.engineSource !== 'ollama') {
+          void this.releaseBrowserModel();
+        }
       });
     }
   }
@@ -207,11 +220,27 @@ export class EngineHost {
     };
     const lazy = new LazyInBrowserEngine({ loadRuntime: load });
 
+    const ollama = new OllamaEngine({
+      loadConfig: async () => {
+        const settings = await loadSettings().catch(() => null);
+        return {
+          enabled: settings?.engineSource === 'ollama',
+          url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+          model: settings?.ollamaModel ?? DEFAULT_OLLAMA_MODEL,
+        };
+      },
+    });
+
     const chromeForCache = chrome.available ? new CachingEngine(chrome, cache, 'chrome') : null;
 
     const router = new RoutingEngine({
       plamo: new CachingEngine(lazy, cache, () => this.activeModelId),
+      ollama,
       chrome: chromeForCache,
+      preferOllama: async () => {
+        const settings = await loadSettings().catch(() => null);
+        return settings?.engineSource === 'ollama';
+      },
       plamoSupports: (src, tgt) =>
         canonicalLanguage(tgt) !== null &&
         (src === undefined || src.trim().length === 0 || canonicalLanguage(src) !== null),
@@ -226,6 +255,7 @@ export class EngineHost {
       router,
       chrome,
       lazy,
+      ollama,
       load,
       get selection() {
         return selectionState.current;
@@ -361,6 +391,26 @@ export class EngineHost {
 
     try {
       const services = await this.services();
+      const settings = await loadSettings().catch(() => null);
+
+      if (settings?.engineSource === 'ollama') {
+        const status = await services.ollama.probeNow(true);
+        if (status.state === 'model-missing') {
+          throw new EngineError(
+            'ollama-model-missing',
+            `Ollama does not have the model ${status.model}.`,
+          );
+        }
+        if (status.state !== 'ready') {
+          throw new EngineError(
+            'ollama-unavailable',
+            `The Ollama server at ${status.url} did not answer.`,
+          );
+        }
+        this.respond(port, requestId, await services.manager.status(this.activeModelId));
+        return;
+      }
+
       let loaded = services.manager.loadedModel;
       if (!loaded || loaded.id !== this.activeModelId) {
         loaded = await services.load(controller.signal);
@@ -569,6 +619,7 @@ export class EngineHost {
       plamoReady: this.plamoReady,
       chromeSupported: services.chrome.available,
       active: services.router.activeEngine,
+      ollama: await services.ollama.probeNow(),
     };
   }
 
@@ -745,6 +796,22 @@ export class EngineHost {
       await services.chrome.dispose();
     } catch {
       // Releasing early is best effort; the next request loads again.
+    }
+  }
+
+  /**
+   * Switching to Ollama makes the in-browser checkpoint dead weight. It is dropped so the
+   * larger local model has the memory, but only when no translation is still running.
+   */
+  private async releaseBrowserModel(): Promise<void> {
+    if ([...this.requests.values()].some((entry) => entry.kind === 'translate')) return;
+
+    try {
+      const services = await this.services();
+      services.lazy.reset();
+      await services.manager.unload();
+    } catch {
+      // Releasing early is best effort; the next in-browser request loads again.
     }
   }
 

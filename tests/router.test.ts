@@ -22,18 +22,25 @@ interface Setup {
   plamoChunks?: TranslationChunk[];
   chromeChunks?: TranslationChunk[];
   plamoError?: unknown;
+  preferOllama?: boolean;
+  ollamaChunks?: TranslationChunk[];
+  ollamaError?: unknown;
 }
 
 function setup(config: Setup = {}) {
   const plamoChunks = config.plamoChunks ?? [CHUNK];
   const chromeChunks = config.chromeChunks ?? [{ id: 'a', final: 'chrome', engine: 'chrome' }];
+  const ollamaChunks = config.ollamaChunks ?? [{ id: 'a', final: 'local', engine: 'ollama' }];
   const plamo = fakeEngine('plamo', plamoChunks, { error: config.plamoError });
   const chrome = fakeEngine('chrome', chromeChunks);
+  const ollama = fakeEngine('ollama', ollamaChunks, { error: config.ollamaError });
   let chromeProbes = 0;
 
   const router = new RoutingEngine({
     plamo,
+    ollama,
     chrome,
+    preferOllama: async () => config.preferOllama ?? false,
     plamoSupports: (_src, tgt) => config.plamoSupports ?? tgt === 'ja',
     chromeSupport: async () => {
       chromeProbes += 1;
@@ -44,6 +51,7 @@ function setup(config: Setup = {}) {
   return {
     router,
     plamo,
+    ollama,
     chrome,
     get chromeProbes() {
       return chromeProbes;
@@ -140,7 +148,9 @@ describe('RoutingEngine', () => {
 
     const router = new RoutingEngine({
       plamo,
+      ollama: null,
       chrome,
+      preferOllama: async () => false,
       plamoSupports: () => true,
       chromeSupport: async () => 'available',
     });
@@ -155,5 +165,40 @@ describe('RoutingEngine', () => {
     });
     await expect(iterator.next()).rejects.toMatchObject({ code: 'model-load-failed' });
     expect(chrome.calls).toBe(0);
+  });
+
+  it('uses Ollama for a supported pair when the reader chose it', async () => {
+    const { router, plamo, ollama } = setup({ preferOllama: true });
+
+    const chunks = await collectChunks(router.translate([{ id: 'a', text: 'Hello.' }], options()));
+
+    expect(chunks).toEqual([{ id: 'a', final: 'local', engine: 'ollama' }]);
+    expect(router.activeEngine).toBe('ollama');
+    expect(ollama.calls).toBe(1);
+    expect(plamo.calls).toBe(0);
+  });
+
+  it('keeps the Ollama failure instead of rerouting it to the in-browser model', async () => {
+    const { router, plamo, chrome } = setup({
+      preferOllama: true,
+      ollamaError: new EngineError('ollama-unavailable', 'no server'),
+    });
+
+    await expect(
+      collectChunks(router.translate([{ id: 'a', text: 'Hello.' }], options())),
+    ).rejects.toMatchObject({ code: 'ollama-unavailable' });
+    expect(plamo.calls).toBe(0);
+    expect(chrome.calls).toBe(0);
+  });
+
+  it('still gives a Chrome-only language to the built-in translator when Ollama is chosen', async () => {
+    const { router, ollama } = setup({ preferOllama: true, plamoSupports: false });
+
+    const chunks = await collectChunks(
+      router.translate([{ id: 'a', text: 'Hello.' }], options({ tgt: 'cs' })),
+    );
+
+    expect(chunks).toEqual([{ id: 'a', final: 'chrome', engine: 'chrome' }]);
+    expect(ollama.calls).toBe(0);
   });
 });

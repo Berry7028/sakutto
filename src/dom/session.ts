@@ -440,7 +440,8 @@ export class PageSession {
     // stand-in for a warming model. Until something has painted, the engine is still null.
     let engine: EngineKind | null = null;
     if (this.active) {
-      if (lives.some((item) => item.engine === 'plamo')) engine = 'plamo';
+      if (lives.some((item) => item.engine === 'ollama')) engine = 'ollama';
+      else if (lives.some((item) => item.engine === 'plamo')) engine = 'plamo';
       else if (lives.some((item) => item.engine === 'chrome')) engine = 'chrome';
     }
     const pageLanguage = this.sourceLanguage();

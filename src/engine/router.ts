@@ -11,7 +11,10 @@ export type PairSupport = 'available' | 'downloadable' | 'downloading' | 'unavai
 
 export interface RoutingDependencies {
   plamo: IdentifiedEngine;
+  ollama: IdentifiedEngine | null;
   chrome: IdentifiedEngine | null;
+  /** True when the reader chose the local Ollama engine. */
+  preferOllama: () => Promise<boolean>;
   plamoSupports: (src: string | undefined, tgt: string) => boolean;
   chromeSupport: (
     segments: readonly TranslateSegment[],
@@ -31,6 +34,10 @@ function chunkEngine(chunk: TranslationChunk, kind: EngineKind): TranslationChun
  * there is no Chrome stand-in to paint first, so a reader sees the source text and then
  * PLaMo's own tokens. The built-in translator is chosen only for a pair the model cannot
  * handle at all, where it is the page's real translator rather than a preview of one.
+ *
+ * When the reader chose Ollama, that is the model: a request is not quietly rerouted to the
+ * smaller in-browser checkpoint if the local server is down. Ollama's own failure is
+ * reported, and the page keeps its source text.
  *
  * There is deliberately no cross-engine fallback. A model failure keeps the source text
  * visible instead of relabelling the page with a Chrome translation.
@@ -66,9 +73,19 @@ export class RoutingEngine {
     segments: readonly TranslateSegment[],
     options: TranslateOptions,
   ): AsyncIterable<TranslationChunk> {
-    const engine = choice === 'plamo' ? this.dependencies.plamo : this.dependencies.chrome;
+    const engine =
+      choice === 'ollama'
+        ? this.dependencies.ollama
+        : choice === 'plamo'
+          ? this.dependencies.plamo
+          : this.dependencies.chrome;
     if (!engine) {
-      throw new EngineError('chrome-unavailable', 'The built-in translator is not available.');
+      throw new EngineError(
+        choice === 'chrome' ? 'chrome-unavailable' : 'ollama-unavailable',
+        choice === 'chrome'
+          ? 'The built-in translator is not available.'
+          : 'The local Ollama server is not configured.',
+      );
     }
 
     for await (const chunk of engine.translate(segments, options)) {
@@ -80,6 +97,10 @@ export class RoutingEngine {
     segments: readonly TranslateSegment[],
     options: TranslateOptions,
   ): Promise<EngineKind> {
+    if (this.dependencies.ollama && (await this.dependencies.preferOllama())) {
+      if (this.dependencies.plamoSupports(options.src, options.tgt)) return 'ollama';
+    }
+
     if (this.dependencies.plamoSupports(options.src, options.tgt)) return 'plamo';
 
     const chromeSupport = await this.dependencies.chromeSupport(segments, options.src, options.tgt);
