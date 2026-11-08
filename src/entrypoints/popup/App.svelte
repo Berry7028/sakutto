@@ -84,6 +84,7 @@
   });
   let offer = $derived(
     settings !== null &&
+      engine?.ollama?.enabled !== true &&
       shouldSuggestHighQuality({
         tier: engine?.tier ?? null,
         paragraphMs: quality?.milliseconds ?? null,

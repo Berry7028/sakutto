@@ -251,10 +251,17 @@ export class EngineHost {
     });
 
     const chromeForCache = chrome.available ? new CachingEngine(chrome, cache, 'chrome') : null;
+    // Ollama translations get their own key space, so a switch between the browser model and
+    // a local checkpoint never serves one engine's output under the other's name.
+    const ollamaForCache = new CachingEngine(
+      ollama,
+      cache,
+      () => `ollama:${this.ollamaConfig.model}`,
+    );
 
     const router = new RoutingEngine({
       plamo: new CachingEngine(lazy, cache, () => this.activeModelId),
-      ollama,
+      ollama: ollamaForCache,
       chrome: chromeForCache,
       preferOllama: async () => this.engineSource === 'ollama',
       plamoSupports: (src, tgt) =>

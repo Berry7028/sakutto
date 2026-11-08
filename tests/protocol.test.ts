@@ -107,6 +107,7 @@ describe('engine host protocol', () => {
     // Draft and preview options are gone: the host never paints built-in page text.
     expect(isEngineHostRequest(request({ draft: true }))).toBe(true);
     expect(isEngineHostRequest({ type: 'benchmark', requestId: 'b1' })).toBe(true);
+    expect(isEngineHostRequest({ type: 'ollama-probe', requestId: 'o1' })).toBe(true);
     expect(isEngineHostRequest({ type: 'cache-clear', requestId: 'c1' })).toBe(true);
     expect(isEngineHostRequest({ type: 'tier-set', requestId: 't1', tier: 'auto' })).toBe(true);
     expect(isEngineHostRequest({ type: 'tier-set', requestId: 't1', tier: 'fast' })).toBe(false);

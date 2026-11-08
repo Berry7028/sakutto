@@ -77,7 +77,8 @@
       : (rules[glossaryScope]?.glossary ?? []),
   );
   let showSlow = $derived(
-    shouldHintBuiltInFallback(engine?.tier ?? null, quality?.milliseconds ?? null),
+    engine?.ollama?.enabled !== true &&
+      shouldHintBuiltInFallback(engine?.tier ?? null, quality?.milliseconds ?? null),
   );
   let engineLine = $derived.by(() => {
     const label = runtimeLabel({
