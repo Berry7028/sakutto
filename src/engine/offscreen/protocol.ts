@@ -9,6 +9,7 @@ import type {
   TranslationChunk,
 } from '../types';
 import { isModelStatus, type ModelStatus } from '../../shared/engine-status';
+import { MAX_GLOSSARY_MESSAGE_ENTRIES, MAX_GLOSSARY_TEXT } from '../../shared/glossary';
 import { isTargetLanguage } from '../../shared/languages';
 import { isTierPreference, type TierPreference } from '../../shared/settings';
 
@@ -233,10 +234,15 @@ export type TranslationServerMessage =
 
 const MAX_SEGMENTS = 2000;
 const MAX_SEGMENT_ID = 200;
-const MAX_SEGMENT_TEXT = 20_000;
+/**
+ * Per-segment text in an offscreen message. Typed input is one segment, so this is also
+ * the typed-box ceiling. 100_000 is a sanity bound for one chrome.runtime message, not a
+ * billing quota: local translation has no per-character cost. The model still splits the
+ * text into prompt-sized pieces. chrome.runtime messages can be tens of MB; 100k
+ * characters is far below that.
+ */
+export const MAX_SEGMENT_TEXT = 100_000;
 const MAX_CONTEXT_TEXT = 20_000;
-const MAX_GLOSSARY_ENTRIES = 1000;
-const MAX_GLOSSARY_TEXT = 4096;
 const MAX_LANGUAGE_TAG = 35;
 const MAX_PRIORITY = 100;
 
@@ -251,7 +257,7 @@ function isBoundedText(value: unknown, maximum: number): value is string {
 function isGlossary(value: unknown): value is GlossaryEntry[] {
   return (
     Array.isArray(value) &&
-    value.length <= MAX_GLOSSARY_ENTRIES &&
+    value.length <= MAX_GLOSSARY_MESSAGE_ENTRIES &&
     value.every(
       (entry) =>
         isRecord(entry) &&
