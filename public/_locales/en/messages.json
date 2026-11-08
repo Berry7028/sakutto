@@ -153,14 +153,92 @@
   "optionsLead": {
     "message": "Choose how translation works, manage the model, and set per-site behavior. Changes save automatically."
   },
+  "ollamaHeading": {
+    "message": "Local Ollama"
+  },
+  "ollamaLead": {
+    "message": "Run a larger PLaMo checkpoint in Ollama on this machine. The extension sends the same PLaMo prompt to your local server instead of loading the model in the browser."
+  },
+  "ollamaSourceLabel": {
+    "message": "Translation engine"
+  },
+  "ollamaSourceBrowser": {
+    "message": "In-browser model"
+  },
+  "ollamaSourceOllama": {
+    "message": "Local Ollama"
+  },
+  "ollamaUrlLabel": {
+    "message": "Ollama URL"
+  },
+  "ollamaModelLabel": {
+    "message": "Model name"
+  },
+  "ollamaModelHelp": {
+    "message": "Use the name shown by ollama list, for example hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M."
+  },
+  "ollamaGrant": {
+    "message": "Allow access"
+  },
+  "ollamaCheck": {
+    "message": "Check connection"
+  },
+  "ollamaChecking": {
+    "message": "Checking…"
+  },
+  "ollamaStateReady": {
+    "message": "Connected. The model is installed."
+  },
+  "ollamaStateModelMissing": {
+    "message": "Connected, but this model is not installed. Pull it with ollama pull."
+  },
+  "ollamaStateUnreachable": {
+    "message": "Could not reach the Ollama server. Is ollama serve running?"
+  },
+  "ollamaStateDisabled": {
+    "message": "Ollama is not selected."
+  },
+  "ollamaStateUnknown": {
+    "message": "Not checked yet."
+  },
+  "ollamaGrantFailed": {
+    "message": "Chrome did not grant access to this Ollama URL."
+  },
+  "ollamaPrivacyNote": {
+    "message": "While Ollama is selected, page text, selections, and typed text are sent to this URL. Keep it on a machine you trust; the developer never receives them."
+  },
+  "ollamaSetupHeading": {
+    "message": "Set up Ollama"
+  },
+  "ollamaSetupInstall": {
+    "message": "Install Ollama and start the server."
+  },
+  "ollamaSetupPull": {
+    "message": "Pull the PLaMo GGUF. The 2B Q4_K_M file is a good starting point; 8B and 31B need more memory."
+  },
+  "ollamaSetupOrigin": {
+    "message": "Allow the extension origin. Ollama refuses browser origins it does not know. The store build's ID is mhlbjjijfkoghmcjndgdimhdlfkhadfl."
+  },
+  "ollamaSetupChoose": {
+    "message": "Choose Local Ollama above, then press Check connection."
+  },
+  "ollamaSetupMore": {
+    "message": "The full guide, including Windows and Linux, is in docs/OLLAMA.md."
+  },
+  "ollamaOriginHelp": {
+    "message": "If the check fails with 403, OLLAMA_ORIGINS does not include chrome-extension://*. Restart Ollama after changing it."
+  },
+  "ollamaDocsLink": {
+    "message": "Read the setup guide"
+  },
   "privacyHeading": {
     "message": "Privacy"
   },
   "privacyBody": {
-    "message": "This extension does not send page text to a server. There is no telemetry."
+    "message": "Translation runs on this device by default. If you choose Local Ollama, page text is sent only to the Ollama URL you configure. There is no telemetry."
   },
   "privacyDestinations": {
-    "message": "The extension's own request is the model download. It starts at huggingface.co and follows Hugging Face's redirect to its CDN. Page text is not included. Chrome downloads its language packs itself."
+    "message": "The extension's own request is the model download. It starts at huggingface.co and follows Hugging Face's redirect to its CDN. Page text is not included. With Ollama selected, translation requests go to the URL in the Ollama settings. Chrome downloads its language packs itself."
   },
   "privacyPolicyLink": {
     "message": "Privacy policy"
@@ -425,6 +503,23 @@
   },
   "runtimeChecking": {
     "message": "Checking…"
+  },
+  "runtimeOllama": {
+    "message": "Ollama · $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1"
+      }
+    }
+  },
+  "runtimeOllamaModelMissing": {
+    "message": "Ollama: model not installed"
+  },
+  "runtimeOllamaUnreachable": {
+    "message": "Ollama: not reachable"
+  },
+  "runtimeOllamaUnknown": {
+    "message": "Ollama: checking"
   },
   "chromeOnlySuffix": {
     "message": " (Chrome built-in)"
@@ -768,6 +863,12 @@
   },
   "typedModelError": {
     "message": "The PLaMo model could not load. Open the options page to check it."
+  },
+  "typedOllamaUnavailable": {
+    "message": "Ollama is selected but is not answering. Check the server, or switch back to the in-browser model."
+  },
+  "typedOpenOptions": {
+    "message": "Open settings"
   },
   "typedDownloadModel": {
     "message": "Download the model"

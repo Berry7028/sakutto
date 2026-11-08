@@ -137,4 +137,34 @@ describe('runtime label', () => {
       }).key,
     ).toBe('runtimeWaiting');
   });
+
+  it('names the local Ollama state while it is the chosen engine', () => {
+    const ollama = (state: 'ready' | 'model-missing' | 'unreachable' | 'unknown') =>
+      status({
+        ollama: {
+          enabled: true,
+          url: 'http://127.0.0.1:11434',
+          model: 'plamo-3-translate:2b',
+          state,
+        },
+      });
+
+    expect(
+      runtimeLabel({ status: ollama('ready'), pageSimple: false, targetLanguage: 'ja' }),
+    ).toEqual({ key: 'runtimeOllama', substitutions: ['plamo-3-translate:2b'] });
+    expect(
+      runtimeLabel({ status: ollama('model-missing'), pageSimple: false, targetLanguage: 'ja' })
+        .key,
+    ).toBe('runtimeOllamaModelMissing');
+    expect(
+      runtimeLabel({ status: ollama('unreachable'), pageSimple: false, targetLanguage: 'ja' }).key,
+    ).toBe('runtimeOllamaUnreachable');
+    expect(
+      runtimeLabel({ status: ollama('unknown'), pageSimple: false, targetLanguage: 'ja' }).key,
+    ).toBe('runtimeOllamaUnknown');
+    // A Chrome-only pair is still Chrome's job even when Ollama is selected.
+    expect(
+      runtimeLabel({ status: ollama('ready'), pageSimple: false, targetLanguage: 'pt' }).key,
+    ).toBe('runtimeChrome');
+  });
 });

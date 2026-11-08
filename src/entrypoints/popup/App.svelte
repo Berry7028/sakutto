@@ -70,7 +70,9 @@
   let canStart = $derived(
     translated ||
       isChromeOnlyLanguage(targetLanguage) ||
-      !modelStartBlocked(engine?.model ?? modelMark),
+      (engine?.ollama?.enabled === true
+        ? engine.ollama.state === 'ready'
+        : !modelStartBlocked(engine?.model ?? modelMark)),
   );
   let engineText = $derived.by(() => {
     const label = runtimeLabel({
@@ -82,6 +84,7 @@
   });
   let offer = $derived(
     settings !== null &&
+      engine?.ollama?.enabled !== true &&
       shouldSuggestHighQuality({
         tier: engine?.tier ?? null,
         paragraphMs: quality?.milliseconds ?? null,

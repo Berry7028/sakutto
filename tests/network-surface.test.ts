@@ -137,14 +137,32 @@ const NETWORK_SINKS = [
 ];
 
 describe('network surface', () => {
-  it('keeps every network sink in the model download', () => {
+  it('keeps every network sink in the model download and the local Ollama client', () => {
     const reaching = files.filter(
       (file) =>
         /\bfetch\w*\s*\(/u.test(file.code) ||
         NETWORK_SINKS.some((pattern) => pattern.test(file.code)),
     );
 
-    expect(reaching.map((file) => file.path)).toEqual(['src/engine/model/download.ts']);
+    expect(reaching.map((file) => file.path).sort()).toEqual([
+      'src/engine/model/download.ts',
+      'src/engine/ollama/client.ts',
+    ]);
+  });
+
+  it('sends page text only to the Ollama endpoint the reader configured', () => {
+    const client = files.find((file) => file.path === 'src/engine/ollama/client.ts');
+    if (!client) throw new Error('client.ts was not found');
+
+    // No remote host is baked into the client: every request is built from the configured
+    // base URL, whose default is loopback (checked below).
+    expect(client.code).not.toMatch(/https?:\/\//u);
+    expect(client.code).toContain('`${this.baseUrl}${path}`');
+    expect(client.code).toContain("'/api/generate'");
+    expect(client.code).toContain("'/api/tags'");
+
+    const settings = readFileSync(join(ROOT, 'src/shared/settings.ts'), 'utf8');
+    expect(settings).toContain("export const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';");
   });
 
   it('sends no body and no credentials with the model request', () => {

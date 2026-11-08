@@ -6,18 +6,27 @@
   import type { SiteAuto, SiteRule } from '@/dom/sites';
   import { loadSiteRules, pageHost, saveSiteRule, subscribeSiteRules } from '@/dom/sites';
   import type { EngineCapabilities } from '@/shared/capabilities';
-  import type { EngineStatus } from '@/shared/engine-status';
+  import type { EngineStatus, OllamaStatus } from '@/shared/engine-status';
   import { currentUiLanguage, t } from '@/shared/i18n';
   import {
     requestCacheClear,
     requestEngineCapabilities,
     requestEngineStatus,
     requestEngineTier,
+    requestOllamaProbe,
     requestQualitySample,
   } from '@/shared/messages';
   import type { QualitySample } from '@/shared/quality';
   import { PLAMO_OFFICIAL_LINKS, PROJECT_LINKS } from '@/shared/plamo-license';
-  import type { IdleMinutes, Settings, SettingsPatch, TierPreference } from '@/shared/settings';
+  import {
+    DEFAULT_OLLAMA_URL,
+    normalizeOllamaUrl,
+    ollamaPermissionPattern,
+    type IdleMinutes,
+    type Settings,
+    type SettingsPatch,
+    type TierPreference,
+  } from '@/shared/settings';
   import { isIdleMinutes, isTierPreference } from '@/shared/settings';
   import type { TargetLanguage } from '@/shared/languages';
   import { loadSettings, saveSettings, subscribeSettings } from '@/shared/storage';
@@ -55,6 +64,9 @@
   let quality = $state<QualitySample | null>(null);
   let cacheState = $state<CacheState>(null);
   let actionFailed = $state(false);
+  let ollamaStatus = $state<OllamaStatus | null>(null);
+  let ollamaChecking = $state(false);
+  let ollamaPermission = $state<'granted' | 'denied' | null>(null);
 
   let siteList = $derived(
     Object.values(rules).sort((left, right) => left.host.localeCompare(right.host)),
@@ -65,7 +77,8 @@
       : (rules[glossaryScope]?.glossary ?? []),
   );
   let showSlow = $derived(
-    shouldHintBuiltInFallback(engine?.tier ?? null, quality?.milliseconds ?? null),
+    engine?.ollama?.enabled !== true &&
+      shouldHintBuiltInFallback(engine?.tier ?? null, quality?.milliseconds ?? null),
   );
   let engineLine = $derived.by(() => {
     const label = runtimeLabel({
@@ -74,6 +87,21 @@
       targetLanguage: settings?.targetLanguage ?? 'en',
     });
     return t(label.key, label.substitutions);
+  });
+  let ollamaStateText = $derived.by(() => {
+    if (ollamaChecking) return t('ollamaChecking');
+    switch (ollamaStatus?.state ?? 'unknown') {
+      case 'ready':
+        return t('ollamaStateReady');
+      case 'model-missing':
+        return t('ollamaStateModelMissing');
+      case 'unreachable':
+        return t('ollamaStateUnreachable');
+      case 'disabled':
+        return t('ollamaStateDisabled');
+      default:
+        return t('ollamaStateUnknown');
+    }
   });
 
   async function updateSettings(patch: SettingsPatch) {
@@ -89,6 +117,7 @@
     try {
       settings = await loadSettings();
       settingsError = null;
+      if (settings.engineSource === 'ollama') void checkOllama();
     } catch {
       settingsError = 'load';
     }
@@ -161,6 +190,66 @@
     await updateSettings({ idleMinutes });
   }
 
+  /**
+   * Chrome only lets an extension reach the Ollama origin after the reader grants it. The
+   * request has to run inside the click or change event, so it is not wrapped in a timeout.
+   */
+  async function requestOllamaPermission(
+    url = settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+  ): Promise<boolean> {
+    const pattern = ollamaPermissionPattern(url);
+    if (!pattern) return false;
+    try {
+      const granted = await browser.permissions.request({ origins: [pattern] });
+      ollamaPermission = granted ? 'granted' : 'denied';
+      return granted;
+    } catch {
+      ollamaPermission = 'denied';
+      return false;
+    }
+  }
+
+  async function checkOllama() {
+    ollamaChecking = true;
+    const status = await requestOllamaProbe();
+    ollamaStatus =
+      status ??
+      ({
+        enabled: true,
+        url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+        model: settings?.ollamaModel ?? '',
+        state: 'unreachable',
+      } satisfies OllamaStatus);
+    ollamaChecking = false;
+  }
+
+  async function changeEngineSource(event: Event) {
+    const select = event.currentTarget as HTMLSelectElement;
+    const engineSource = select.value === 'ollama' ? 'ollama' : 'browser';
+    if (engineSource === 'ollama') await requestOllamaPermission();
+    await updateSettings({ engineSource });
+    if (engineSource === 'ollama') void checkOllama();
+  }
+
+  async function changeOllamaUrl(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const ollamaUrl = normalizeOllamaUrl(input.value);
+    input.value = ollamaUrl;
+    if (settings?.engineSource === 'ollama') {
+      await requestOllamaPermission(ollamaUrl);
+    }
+    await updateSettings({ ollamaUrl });
+    if (settings?.engineSource === 'ollama') void checkOllama();
+  }
+
+  async function changeOllamaModel(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const ollamaModel = input.value.trim();
+    input.value = ollamaModel;
+    await updateSettings({ ollamaModel });
+    if (settings?.engineSource === 'ollama') void checkOllama();
+  }
+
   async function clearCache() {
     cacheState = (await requestCacheClear()) ? 'cleared' : 'failed';
   }
@@ -195,6 +284,7 @@
     void loadRules();
     void requestEngineStatus().then((status) => {
       engine = status;
+      if (status?.ollama) ollamaStatus = status.ollama;
     });
     void requestEngineCapabilities().then((value) => {
       capabilities = value;
@@ -340,6 +430,97 @@
       <p class="muted" role="status">{t('cacheCleared')}</p>
     {:else if cacheState === 'failed'}
       <p class="error" role="alert">{t('cacheClearFailed')}</p>
+    {/if}
+  </section>
+
+  <section class="panel">
+    <h2>{t('ollamaHeading')}</h2>
+    <p class="muted help">{t('ollamaLead')}</p>
+    {#if settings}
+      <label class="field">
+        <span>{t('ollamaSourceLabel')}</span>
+        <select value={settings.engineSource} onchange={changeEngineSource}>
+          <option value="browser">{t('ollamaSourceBrowser')}</option>
+          <option value="ollama">{t('ollamaSourceOllama')}</option>
+        </select>
+      </label>
+      {#if settings.engineSource === 'ollama'}
+        <label class="field">
+          <span>{t('ollamaUrlLabel')}</span>
+          <input
+            value={settings.ollamaUrl}
+            onchange={changeOllamaUrl}
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
+        <label class="field">
+          <span>{t('ollamaModelLabel')}</span>
+          <input
+            value={settings.ollamaModel}
+            onchange={changeOllamaModel}
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </label>
+        <p class="muted help">{t('ollamaModelHelp')}</p>
+        <div class="ollama-actions">
+          <button class="button secondary" type="button" onclick={() => requestOllamaPermission()}>
+            {t('ollamaGrant')}
+          </button>
+          <button
+            class="button secondary"
+            type="button"
+            onclick={checkOllama}
+            disabled={ollamaChecking}
+          >
+            {ollamaChecking ? t('ollamaChecking') : t('ollamaCheck')}
+          </button>
+        </div>
+        <p class="ollama-state" role="status">{ollamaStateText}</p>
+        {#if ollamaPermission === 'denied'}
+          <p class="error" role="alert">{t('ollamaGrantFailed')}</p>
+        {/if}
+        <p class="muted help">{t('ollamaPrivacyNote')}</p>
+        <details class="more">
+          <summary>{t('ollamaSetupHeading')}</summary>
+          <ol class="steps">
+            <li>
+              <p>{t('ollamaSetupInstall')}</p>
+              <pre><code
+                  >brew install ollama
+ollama serve</code
+                ></pre>
+            </li>
+            <li>
+              <p>{t('ollamaSetupPull')}</p>
+              <pre><code>ollama pull hf.co/pfnet/plamo-3-translate-2b-GGUF:Q4_K_M</code></pre>
+            </li>
+            <li>
+              <p>{t('ollamaSetupOrigin')}</p>
+              <pre><code
+                  >launchctl setenv OLLAMA_ORIGINS "chrome-extension://mhlbjjijfkoghmcjndgdimhdlfkhadfl"
+# self-built: use the ID on chrome://extensions
+# then restart Ollama</code
+                ></pre>
+            </li>
+            <li>
+              <p>{t('ollamaSetupChoose')}</p>
+            </li>
+          </ol>
+          <p class="muted help">{t('ollamaOriginHelp')}</p>
+          <p class="muted help">{t('ollamaSetupMore')}</p>
+          <p>
+            <a
+              href={`${projectLinks.source}/blob/main/docs/OLLAMA.md`}
+              target="_blank"
+              rel="noreferrer">{t('ollamaDocsLink')}</a
+            >
+          </p>
+        </details>
+      {/if}
+    {:else}
+      <p class="muted">{t('statusChecking')}</p>
     {/if}
   </section>
 
@@ -560,6 +741,40 @@
 
   .more .links {
     margin-top: var(--space-2);
+  }
+
+  .ollama-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  .ollama-state {
+    margin-bottom: var(--space-2);
+    font-weight: 600;
+  }
+
+  .steps {
+    display: grid;
+    gap: var(--space-3);
+    margin: var(--space-2) 0;
+    padding-left: 18px;
+    list-style: decimal;
+  }
+
+  .steps p {
+    margin-bottom: var(--space-1);
+  }
+
+  pre {
+    overflow-x: auto;
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 11px;
+    line-height: 1.5;
   }
 
   .diag {

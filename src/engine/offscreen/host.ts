@@ -5,13 +5,19 @@ import { canonicalLanguage } from '@/shared/languages';
 import type { EngineStatus, ModelStatus } from '@/shared/engine-status';
 import { advanceModelStatus } from '@/shared/model-progress';
 import { loadSettings } from '@/shared/storage';
-import type { TierPreference } from '@/shared/settings';
+import {
+  DEFAULT_OLLAMA_MODEL,
+  DEFAULT_OLLAMA_URL,
+  type EngineSource,
+  type Settings,
+  type TierPreference,
+} from '@/shared/settings';
 import { MemoryTranslationCacheStore, IndexedDbTranslationCacheStore } from '../cache/store';
 import { CachingEngine } from '../cache/caching-engine';
 import { TranslationCache } from '../cache/cache';
 import { prewarmRequest } from '../cache/prewarm';
 import { ChromeTranslatorEngine } from '../chrome/translator';
-import { isAbortError } from '../errors';
+import { isAbortError, EngineError } from '../errors';
 import { selectionForTier, cpuFallback, type BackendSelection } from '../in-browser/backend';
 import { LazyInBrowserEngine } from '../in-browser/lazy-engine';
 import { createWllamaRuntime, type LlamaRuntime } from '../in-browser/runtime';
@@ -20,6 +26,7 @@ import { OpfsModelFileStore } from '../model/file-store';
 import { ModelManager, type LoadedModel } from '../model/manager';
 import type { DownloadProgress } from '../model/download';
 import { QUALITY_PARAGRAPH } from '../model/suggestion';
+import { OllamaEngine } from '../ollama/engine';
 import { buildTranslationPrompt } from '../prompt/pfml3';
 import { RoutingEngine, type PairSupport } from '../router';
 import {
@@ -33,6 +40,7 @@ import {
   type ModelDeleteRequest,
   type ModelDownloadRequest,
   type ModelStatusRequest,
+  type OllamaProbeRequest,
   type TierSetRequest,
   type TranslateRequest,
 } from './protocol';
@@ -45,6 +53,7 @@ export interface EngineServices {
   router: RoutingEngine;
   chrome: ChromeTranslatorEngine;
   lazy: LazyInBrowserEngine;
+  ollama: OllamaEngine;
   /** Loads the active model, dropping to the CPU tier when the GPU cannot take it. */
   load: (signal: AbortSignal) => Promise<LoadedModel>;
   readonly selection: BackendSelection;
@@ -135,6 +144,16 @@ export class EngineHost {
   private prewarmKey: string | null = null;
   /** The probe offered WebGPU but the model could not be placed on it. */
   private gpuFallback = false;
+  /**
+   * The engine choice is cached here rather than read from storage on every segment. The
+   * storage listener below keeps it current, and the Ollama engine reads the same object.
+   */
+  private engineSource: EngineSource = 'browser';
+  private ollamaConfig = {
+    enabled: false,
+    url: DEFAULT_OLLAMA_URL,
+    model: DEFAULT_OLLAMA_MODEL,
+  };
 
   constructor(options: EngineHostOptions = {}) {
     this.idleReleaseMs = options.idleReleaseMs ?? IDLE_RELEASE_MS;
@@ -142,9 +161,28 @@ export class EngineHost {
 
     if (browser.storage?.onChanged) {
       browser.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && changes.settings) this.touch();
+        if (area !== 'local' || !changes.settings) return;
+        this.touch();
+
+        const before = changes.settings.oldValue as { engineSource?: unknown } | undefined;
+        const after = changes.settings.newValue as { engineSource?: unknown } | undefined;
+        void loadSettings()
+          .then((settings) => this.applySettings(settings))
+          .catch(() => undefined);
+        if (after?.engineSource === 'ollama' && before?.engineSource !== 'ollama') {
+          void this.releaseBrowserModel();
+        }
       });
     }
+  }
+
+  private applySettings(settings: Settings | null): void {
+    this.engineSource = settings?.engineSource === 'ollama' ? 'ollama' : 'browser';
+    this.ollamaConfig = {
+      enabled: this.engineSource === 'ollama',
+      url: settings?.ollamaUrl ?? DEFAULT_OLLAMA_URL,
+      model: settings?.ollamaModel ?? DEFAULT_OLLAMA_MODEL,
+    };
   }
 
   handlePort(port: Browser.runtime.Port): void {
@@ -185,6 +223,7 @@ export class EngineHost {
       hardwareConcurrency: capabilities.hardwareConcurrency,
     };
     const stored = browser.storage?.local ? await loadSettings().catch(() => null) : null;
+    this.applySettings(stored);
     const selection = selectionForTier(stored?.tier ?? 'auto', probe);
     const selectionState = { current: selection };
     const store = await OpfsModelFileStore.open();
@@ -207,11 +246,24 @@ export class EngineHost {
     };
     const lazy = new LazyInBrowserEngine({ loadRuntime: load });
 
+    const ollama = new OllamaEngine({
+      loadConfig: async () => this.ollamaConfig,
+    });
+
     const chromeForCache = chrome.available ? new CachingEngine(chrome, cache, 'chrome') : null;
+    // Ollama translations get their own key space, so a switch between the browser model and
+    // a local checkpoint never serves one engine's output under the other's name.
+    const ollamaForCache = new CachingEngine(
+      ollama,
+      cache,
+      () => `ollama:${this.ollamaConfig.model}`,
+    );
 
     const router = new RoutingEngine({
       plamo: new CachingEngine(lazy, cache, () => this.activeModelId),
+      ollama: ollamaForCache,
       chrome: chromeForCache,
+      preferOllama: async () => this.engineSource === 'ollama',
       plamoSupports: (src, tgt) =>
         canonicalLanguage(tgt) !== null &&
         (src === undefined || src.trim().length === 0 || canonicalLanguage(src) !== null),
@@ -226,6 +278,7 @@ export class EngineHost {
       router,
       chrome,
       lazy,
+      ollama,
       load,
       get selection() {
         return selectionState.current;
@@ -314,6 +367,9 @@ export class EngineHost {
       case 'benchmark':
         void this.handleBenchmark(port, message);
         return;
+      case 'ollama-probe':
+        void this.handleOllamaProbe(port, message);
+        return;
     }
   }
 
@@ -361,6 +417,25 @@ export class EngineHost {
 
     try {
       const services = await this.services();
+
+      if (this.engineSource === 'ollama') {
+        const status = await services.ollama.probeNow();
+        if (status.state === 'model-missing') {
+          throw new EngineError(
+            'ollama-model-missing',
+            `Ollama does not have the model ${status.model}.`,
+          );
+        }
+        if (status.state !== 'ready') {
+          throw new EngineError(
+            'ollama-unavailable',
+            `The Ollama server at ${status.url} did not answer.`,
+          );
+        }
+        this.respond(port, requestId, await services.manager.status(this.activeModelId));
+        return;
+      }
+
       let loaded = services.manager.loadedModel;
       if (!loaded || loaded.id !== this.activeModelId) {
         loaded = await services.load(controller.signal);
@@ -569,6 +644,7 @@ export class EngineHost {
       plamoReady: this.plamoReady,
       chromeSupported: services.chrome.available,
       active: services.router.activeEngine,
+      ollama: await services.ollama.probeNow(),
     };
   }
 
@@ -607,6 +683,18 @@ export class EngineHost {
       const services = await this.services();
       await services.setTier(request.tier);
       this.respond(port, request.requestId, null);
+    } catch (error) {
+      this.respondError(port, request.requestId, error);
+    }
+  }
+
+  private async handleOllamaProbe(
+    port: Browser.runtime.Port,
+    request: OllamaProbeRequest,
+  ): Promise<void> {
+    try {
+      const services = await this.services();
+      this.respond(port, request.requestId, await services.ollama.probeNow(true));
     } catch (error) {
       this.respondError(port, request.requestId, error);
     }
@@ -745,6 +833,22 @@ export class EngineHost {
       await services.chrome.dispose();
     } catch {
       // Releasing early is best effort; the next request loads again.
+    }
+  }
+
+  /**
+   * Switching to Ollama makes the in-browser checkpoint dead weight. It is dropped so the
+   * larger local model has the memory, but only when no translation is still running.
+   */
+  private async releaseBrowserModel(): Promise<void> {
+    if ([...this.requests.values()].some((entry) => entry.kind === 'translate')) return;
+
+    try {
+      const services = await this.services();
+      services.lazy.reset();
+      await services.manager.unload();
+    } catch {
+      // Releasing early is best effort; the next in-browser request loads again.
     }
   }
 

@@ -35,6 +35,23 @@ export function runtimeLabel(input: {
   // is the page's real translator rather than a stand-in for a warming model.
   if (isChromeOnlyLanguage(targetLanguage) || pageSimple) return { key: 'runtimeChrome' };
 
+  // The reader chose the local server, so its state is the answer even when the in-browser
+  // model happens to be loaded as well.
+  if (status.ollama?.enabled === true) {
+    switch (status.ollama.state) {
+      case 'ready':
+        return { key: 'runtimeOllama', substitutions: [status.ollama.model] };
+      case 'model-missing':
+        return { key: 'runtimeOllamaModelMissing' };
+      case 'unreachable':
+        return { key: 'runtimeOllamaUnreachable' };
+      case 'disabled':
+        break;
+      default:
+        return { key: 'runtimeOllamaUnknown' };
+    }
+  }
+
   if (status.plamoReady) {
     if (status.backend === 'webgpu') return { key: 'runtimePlamoGpu' };
     return { key: status.gpuFallback === true ? 'runtimePlamoGpuFallback' : 'runtimePlamoCpu' };

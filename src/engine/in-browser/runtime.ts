@@ -1,15 +1,11 @@
 import { abortError, EngineError, isAbortError } from '../errors';
+import type { CompletionRequest } from '../prompt/engine';
 import { TRANSLATION_STOP_TOKENS } from '../prompt/pfml3';
 import { createWllama } from '../wllama';
 import type { WllamaConfig } from '../wllama/module';
 import type { BackendKind, BackendSelection } from './backend';
 
-export interface CompletionRequest {
-  prompt: string;
-  maxTokens: number;
-  signal: AbortSignal;
-  onToken: (text: string) => void;
-}
+export type { CompletionRequest };
 
 export interface LlamaRuntime {
   readonly backend: BackendKind;

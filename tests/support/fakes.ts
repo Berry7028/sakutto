@@ -126,7 +126,7 @@ export class FakeRuntime implements LlamaRuntime {
 }
 
 export function fakeEngine(
-  kind: 'plamo' | 'chrome',
+  kind: 'plamo' | 'ollama' | 'chrome',
   chunks: readonly TranslationChunk[],
   options: { error?: unknown; beforeChunks?: () => Promise<void> } = {},
 ): IdentifiedEngine & { calls: number } {

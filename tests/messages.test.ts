@@ -88,6 +88,42 @@ describe('message validation', () => {
     ).toBe(false);
     expect(
       isEngineStatus({
+        model: modelStatus,
+        backend: 'cpu-wasm',
+        tier: 'c8',
+        threads: 8,
+        parallel: 1,
+        plamoReady: false,
+        chromeSupported: true,
+        active: 'ollama',
+        ollama: {
+          enabled: true,
+          url: 'http://127.0.0.1:11434',
+          model: 'plamo-3-translate:2b',
+          state: 'ready',
+        },
+      }),
+    ).toBe(true);
+    expect(
+      isEngineStatus({
+        model: modelStatus,
+        backend: 'cpu-wasm',
+        tier: 'c8',
+        threads: 8,
+        parallel: 1,
+        plamoReady: false,
+        chromeSupported: true,
+        active: 'ollama',
+        ollama: {
+          enabled: true,
+          url: 'http://127.0.0.1:11434',
+          model: 'plamo-3-translate:2b',
+          state: 'half-ready',
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isEngineStatus({
         model: { ...modelStatus, id: 'other-model' },
         backend: 'cpu-wasm',
         tier: 'c8',
@@ -154,5 +190,10 @@ describe('page view state contract', () => {
     const { total, ...missing } = base;
     expect(total).toBe(3);
     expect(isPageViewState({ ...missing, skipped: 0 })).toBe(false);
+  });
+
+  it('accepts the local Ollama engine and rejects an unknown one', () => {
+    expect(isPageViewState({ ...base, engine: 'ollama' })).toBe(true);
+    expect(isPageViewState({ ...base, engine: 'cloud' })).toBe(false);
   });
 });

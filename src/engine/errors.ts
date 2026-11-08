@@ -10,6 +10,9 @@ export type EngineErrorCode =
   | 'chrome-unavailable'
   | 'chrome-not-ready'
   | 'offscreen-unavailable'
+  | 'ollama-unavailable'
+  | 'ollama-model-missing'
+  | 'ollama-failed'
   | 'aborted'
   | 'unknown';
 
@@ -44,6 +47,9 @@ const ENGINE_ERROR_CODES: ReadonlySet<string> = new Set<EngineErrorCode>([
   'chrome-unavailable',
   'chrome-not-ready',
   'offscreen-unavailable',
+  'ollama-unavailable',
+  'ollama-model-missing',
+  'ollama-failed',
   'aborted',
   'unknown',
 ]);
