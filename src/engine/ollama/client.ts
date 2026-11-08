@@ -215,6 +215,8 @@ export class OllamaClient {
     signal: AbortSignal,
     timeoutMs: number,
   ): Promise<OpenResponse> {
+    if (signal.aborted) throw abortError();
+
     const controller = new AbortController();
     const forward = (): void => controller.abort();
     signal.addEventListener('abort', forward, { once: true });

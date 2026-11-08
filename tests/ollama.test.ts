@@ -295,4 +295,27 @@ describe('OllamaEngine', () => {
     await ollama.probeNow(true);
     expect(fetchImpl.calls.filter((call) => call.url.endsWith('/api/tags'))).toHaveLength(2);
   });
+
+  it('fails the next block fast after the server refuses a connection', async () => {
+    const fetchImpl = fakeFetch((call) => {
+      if (call.url.endsWith('/api/tags')) {
+        return new Response(JSON.stringify({ models: [{ name: 'plamo-3-translate:2b' }] }));
+      }
+      throw new TypeError('Failed to fetch');
+    });
+    const ollama = engine(fetchImpl);
+
+    await ollama.probeNow();
+    await expect(
+      collectChunks(ollama.translate([{ id: 'a', text: 'Hello.' }], options())),
+    ).rejects.toMatchObject({ code: 'ollama-unavailable' });
+    const attempts = fetchImpl.calls.filter((call) => call.url.endsWith('/api/generate')).length;
+
+    await expect(
+      collectChunks(ollama.translate([{ id: 'b', text: 'Hello again.' }], options())),
+    ).rejects.toMatchObject({ code: 'ollama-unavailable' });
+    expect(fetchImpl.calls.filter((call) => call.url.endsWith('/api/generate'))).toHaveLength(
+      attempts,
+    );
+  });
 });
