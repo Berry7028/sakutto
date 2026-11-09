@@ -738,6 +738,9 @@ export class EngineHost {
    * for a cold model. The language and the form come from the pushed snapshot; the licence
    * gate comes from the background, because an offscreen document cannot read storage and a
    * reader who has not agreed must not spend GPU time.
+   *
+   * The glossary is deliberately left out: the prewarm only warms the model, and a glossary
+   * entry that happens to appear in the sample would change nothing the reader sees.
    */
   private async prewarmFrequent(services: EngineServices): Promise<void> {
     const settings = this.settings;
