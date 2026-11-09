@@ -7,6 +7,7 @@ import {
   errorPayload,
   isEngineHostMessage,
   isEngineHostRequest,
+  isEngineSettingsMessage,
   isTranslationCancelRequest,
   isTranslationServerMessage,
   isTranslationStartRequest,
@@ -50,6 +51,32 @@ describe('engine host protocol', () => {
       glossary: [{ source: 'Runner', target: 'ランナー機能' }],
       signal,
     });
+  });
+
+  it('accepts a complete engine settings snapshot and rejects a broken one', () => {
+    const settings = {
+      engineSource: 'ollama',
+      ollamaUrl: 'http://127.0.0.1:11434',
+      ollamaModel: 'plamo-3-translate:2b',
+      tier: 'auto',
+      idleMinutes: 5,
+      targetLanguage: 'ja',
+      form: 'polite',
+    };
+
+    expect(isEngineSettingsMessage({ type: 'engine-settings', settings })).toBe(true);
+    expect(
+      isEngineSettingsMessage({
+        type: 'engine-settings',
+        settings: { ...settings, engineSource: 'cloud' },
+      }),
+    ).toBe(false);
+    expect(
+      isEngineSettingsMessage({
+        type: 'engine-settings',
+        settings: { ...settings, idleMinutes: 7 },
+      }),
+    ).toBe(false);
   });
 
   it('validates translate, status and model requests', () => {

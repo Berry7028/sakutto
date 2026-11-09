@@ -22,6 +22,7 @@ import {
   isSiteGrantRequest,
   isModelDeleteRequest,
   isModelDownloadRequest,
+  isLicenseConsentMessage,
   isModelInspectRequest,
   isModelUseRequest,
   isOllamaProbeMessage,
@@ -203,6 +204,15 @@ export default defineBackground(() => {
     void warmStoredModel();
   });
 
+  // The offscreen document cannot read storage, so a settings change is forwarded to it.
+  // Requests carry a snapshot of their own; this keeps an idle host current until the next
+  // one arrives, so the idle timer and the in-browser model release follow the reader's
+  // choice rather than the defaults.
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.settings) return;
+    void client.pushSettings();
+  });
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id) return false;
 
@@ -299,6 +309,15 @@ export default defineBackground(() => {
 
     if (isOllamaProbeMessage(message)) {
       void client.probeOllama().then(sendResponse, () => sendResponse(null));
+      return true;
+    }
+
+    // The offscreen document has no `chrome.storage`, so it asks here instead of reading.
+    if (isLicenseConsentMessage(message)) {
+      void ensureSettings().then(
+        (settings) => sendResponse(hasLicenseConsent(settings)),
+        () => sendResponse(false),
+      );
       return true;
     }
 

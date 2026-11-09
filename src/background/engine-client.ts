@@ -19,6 +19,8 @@ import {
   type TierSetRequest,
   type TranslateRequest,
   type OllamaProbeRequest,
+  type EngineSettingsMessage,
+  type EngineSettingsSnapshot,
 } from '@/engine/offscreen/protocol';
 import { ChunkStream } from '@/engine/queue/chunk-stream';
 import type { TranslateOptions, TranslateSegment, TranslationChunk } from '@/engine/types';
@@ -32,6 +34,7 @@ import {
   type OllamaStatus,
 } from '@/shared/engine-status';
 import type { TierPreference } from '@/shared/settings';
+import { loadSettings } from '@/shared/storage';
 import type { OffscreenController } from './offscreen-lifecycle';
 
 type RequestWithoutId =
@@ -268,8 +271,52 @@ export class EngineClient {
     throw lastError instanceof Error ? lastError : hostError('The translation host failed.');
   }
 
-  private connect(): Promise<Browser.runtime.Port> {
-    if (this.port) return Promise.resolve(this.port);
+  /**
+   * Sends the current settings to the offscreen document, now.
+   *
+   * The document cannot read `chrome.storage`, so the background is the only context that
+   * can answer what the reader chose. Every request that depends on the choice carries a
+   * snapshot itself; this is for the case where the choice changes while the host is idle
+   * and no request follows, such as the idle-release timer or the in-browser model release.
+   */
+  async pushSettings(): Promise<void> {
+    const port = this.port;
+    if (port) await this.sendSettings(port);
+  }
+
+  /**
+   * Posts a snapshot built from storage. It is awaited before the request it belongs to, and
+   * a port delivers messages in order, so the host applies the snapshot first.
+   */
+  private async sendSettings(port: Browser.runtime.Port): Promise<void> {
+    const settings = await loadSettings().catch(() => null);
+    if (!settings) return;
+
+    const snapshot: EngineSettingsSnapshot = {
+      engineSource: settings.engineSource,
+      ollamaUrl: settings.ollamaUrl,
+      ollamaModel: settings.ollamaModel,
+      tier: settings.tier,
+      idleMinutes: settings.idleMinutes,
+      targetLanguage: settings.targetLanguage,
+      form: settings.form,
+    };
+
+    try {
+      port.postMessage({
+        type: 'engine-settings',
+        settings: snapshot,
+      } satisfies EngineSettingsMessage);
+    } catch {
+      // The port is gone; the disconnect handler settles the streams.
+    }
+  }
+
+  private async connect(): Promise<Browser.runtime.Port> {
+    if (this.port) {
+      await this.pushSettings();
+      return this.port;
+    }
 
     this.connecting ??= (async () => {
       await this.controller.ensure();
@@ -286,6 +333,7 @@ export class EngineClient {
         if (this.port === port) this.handleDisconnect();
       });
       this.port = port;
+      await this.sendSettings(port);
       return port;
     })().finally(() => {
       this.connecting = null;

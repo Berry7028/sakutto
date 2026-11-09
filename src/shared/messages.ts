@@ -144,6 +144,14 @@ export interface OllamaProbeMessage {
   type: 'ollama:probe';
 }
 
+/**
+ * Asks the background whether the reader has accepted the PLaMo licence. The offscreen
+ * document cannot read `chrome.storage`, so it asks instead of reading.
+ */
+export interface LicenseConsentMessage {
+  type: 'licence:consent';
+}
+
 export function isPageInfoRequest(value: unknown): value is PageInfoRequest {
   return isRecord(value) && value.type === 'page:info';
 }
@@ -247,6 +255,10 @@ export function isQualitySampleRequest(value: unknown): value is QualitySampleRe
 
 export function isOllamaProbeMessage(value: unknown): value is OllamaProbeMessage {
   return isRecord(value) && value.type === 'ollama:probe';
+}
+
+export function isLicenseConsentMessage(value: unknown): value is LicenseConsentMessage {
+  return isRecord(value) && value.type === 'licence:consent';
 }
 
 export function isPageInfo(value: unknown): value is PageInfo {

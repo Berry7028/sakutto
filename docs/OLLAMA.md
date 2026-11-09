@@ -165,15 +165,16 @@ Sakutto sends one completion at a time to Ollama. That keeps the full `num_ctx` 
 
 ## Troubleshooting
 
-| Symptom                                      | Cause                                                  | Fix                                                                                |
-| -------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `403 Forbidden`                              | `OLLAMA_ORIGINS` does not include the extension origin | Add the exact origin and restart Ollama; check with the `curl` command above       |
-| `Could not reach the Ollama server`          | Ollama is not running, or the URL/port is wrong        | Run `ollama serve`, then `curl http://127.0.0.1:11434/api/tags`                    |
-| `Connected, but this model is not installed` | The model name does not match `ollama list`            | Pull the model, or paste the exact name                                            |
-| The first translation is slow                | Ollama is loading the checkpoint                       | Wait for the first token; later paragraphs reuse the loaded model                  |
-| Out of memory                                | The checkpoint or context is too large                 | Use a smaller quantization or model; close other GPU-heavy apps                    |
-| Chrome says access was not granted           | The permission prompt was dismissed                    | Press **Allow access** again, or change the URL and grant the new origin           |
-| A page keeps its source text                 | Ollama failed mid-request                              | Check the options page status; the page does not fall back to the in-browser model |
+| Symptom                                                                     | Cause                                                  | Fix                                                                                                                |
+| --------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `403 Forbidden`                                                             | `OLLAMA_ORIGINS` does not include the extension origin | Add the exact origin and restart Ollama; check with the `curl` command above                                       |
+| `Could not reach the Ollama server`                                         | Ollama is not running, or the URL/port is wrong        | Run `ollama serve`, then `curl http://127.0.0.1:11434/api/tags`                                                    |
+| `Connected, but this model is not installed`                                | The model name does not match `ollama list`            | Pull the model, or paste the exact name                                                                            |
+| The first translation is slow                                               | Ollama is loading the checkpoint                       | Wait for the first token; later paragraphs reuse the loaded model                                                  |
+| Out of memory                                                               | The checkpoint or context is too large                 | Use a smaller quantization or model; close other GPU-heavy apps                                                    |
+| Chrome says access was not granted                                          | The permission prompt was dismissed                    | Press **Allow access** again, or change the URL and grant the new origin                                           |
+| A page keeps its source text                                                | Ollama failed mid-request                              | Check the options page status; the page does not fall back to the in-browser model                                 |
+| The status says "Ollama is not selected" while the picker says Local Ollama | The engine host could not see the saved choice         | The offscreen document has no `chrome.storage`, so the background now sends it the settings. Update the extension. |
 
 `ollama ps` shows which model is loaded and how long it will stay. Sakutto asks Ollama to keep it for 30 minutes after the last request.
 
