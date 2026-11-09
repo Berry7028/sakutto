@@ -252,3 +252,15 @@ export function displayLanguage(tag: string, uiLanguage: string): string {
     return normalized;
   }
 }
+
+/**
+ * Locale the language names are written in. The extension's UI is always Japanese, so the
+ * names in the language pickers are Japanese too: an English browser would otherwise list
+ * "Japanese", "English", … beside Japanese labels.
+ */
+export const LANGUAGE_NAMES_LOCALE = 'ja';
+
+/** A language name as the extension's Japanese UI writes it. */
+export function languageName(tag: string): string {
+  return displayLanguage(tag, LANGUAGE_NAMES_LOCALE);
+}

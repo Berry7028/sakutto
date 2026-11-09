@@ -1739,7 +1739,7 @@ export class PageSession {
     const blocksDone = Math.min(view.total, Math.floor(view.done));
     root.dataset.sakuttoProgress = `${String(blocksDone)}/${String(view.total)}`;
     if (view.tokensPerSecond !== null && view.segmentsPerSecond !== null) {
-      root.dataset.sakuttoRate = `${formatRate(view.tokensPerSecond)} tok/s, ${formatRate(view.segmentsPerSecond)} seg/s`;
+      root.dataset.sakuttoRate = `${formatRate(view.tokensPerSecond)} tok/s, ${formatRate(view.segmentsPerSecond)} 区間/s`;
     } else {
       delete root.dataset.sakuttoRate;
     }

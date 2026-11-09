@@ -4,8 +4,12 @@
   import { DEFAULT_MODEL_ID, getModel } from '@/engine/model/catalog';
   import type { ModelStatus } from '@/shared/engine-status';
   import { agreementFromStorage } from '@/shared/agreement';
-  import { currentUiLanguage, t } from '@/shared/i18n';
-  import { resolveTargetLanguage, type TargetLanguage } from '@/shared/languages';
+  import { t } from '@/shared/i18n';
+  import {
+    DEFAULT_TARGET_LANGUAGE,
+    resolveTargetLanguage,
+    type TargetLanguage,
+  } from '@/shared/languages';
   import {
     isModelProgressMessage,
     requestModelCancel,
@@ -44,7 +48,7 @@
 
   type Phase = OnboardingPhase;
 
-  let targetLanguage = $state<TargetLanguage>(resolveTargetLanguage(currentUiLanguage()));
+  let targetLanguage = $state<TargetLanguage>(resolveTargetLanguage(DEFAULT_TARGET_LANGUAGE));
   let startRequested = $state(false);
   let consentSaved = $state(false);
   /**

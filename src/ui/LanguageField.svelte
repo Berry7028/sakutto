@@ -3,19 +3,18 @@
   import {
     CHROME_ONLY_LANGUAGES,
     SUPPORTED_LANGUAGES,
-    displayLanguage,
     isChromeOnlyLanguage,
     isTargetLanguage,
+    languageName,
     type TargetLanguage,
   } from '@/shared/languages';
 
   interface Props {
     value: string;
-    uiLanguage: string;
     onChange: (language: TargetLanguage) => void;
   }
 
-  let { value, uiLanguage, onChange }: Props = $props();
+  let { value, onChange }: Props = $props();
 
   const languages = [...SUPPORTED_LANGUAGES, ...CHROME_ONLY_LANGUAGES];
 
@@ -31,9 +30,7 @@
   <select {value} onchange={update}>
     {#each languages as language (language)}
       <option value={language}>
-        {displayLanguage(language, uiLanguage)}{isChromeOnlyLanguage(language)
-          ? t('chromeOnlySuffix')
-          : ''}
+        {languageName(language)}{isChromeOnlyLanguage(language) ? t('chromeOnlySuffix') : ''}
       </option>
     {/each}
   </select>

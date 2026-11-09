@@ -4,11 +4,11 @@
   import { DEFAULT_MODEL_ID } from '@/engine/model/catalog';
   import { isEngineError } from '@/engine/errors';
   import type { EngineStatus } from '@/shared/engine-status';
-  import { currentUiLanguage, t } from '@/shared/i18n';
+  import { t } from '@/shared/i18n';
   import {
     CHROME_ONLY_LANGUAGES,
-    displayLanguage,
     isChromeOnlyLanguage,
+    languageName,
     type TargetLanguage,
   } from '@/shared/languages';
   import {
@@ -33,7 +33,6 @@
   import { typedEngine } from './engine';
 
   let settings = $state<Settings | null>(null);
-  let uiLanguage = $state(currentUiLanguage());
   let engineStatus = $state<EngineStatus | null>(null);
   let sourceText = $state('');
   let result = $state('');
@@ -62,7 +61,7 @@
   let canTranslate = $derived(
     !translating && trimmed.length > 0 && !tooLong && !chromeOnlyTarget && readiness === 'ready',
   );
-  let targetLabel = $derived(displayLanguage(targetLanguage, uiLanguage));
+  let targetLabel = $derived(languageName(targetLanguage));
   let hasAnything = $derived(sourceText.length > 0 || result.length > 0);
 
   async function refreshEngine() {
@@ -235,7 +234,7 @@
     };
   });
 
-  const chromeOnlyNames = CHROME_ONLY_LANGUAGES.map((code) => displayLanguage(code, uiLanguage));
+  const chromeOnlyNames = CHROME_ONLY_LANGUAGES.map((code) => languageName(code));
 </script>
 
 <main class="page">
@@ -251,7 +250,7 @@
     <h2 id="typed-heading" class="visually-hidden">{t('typedHeading')}</h2>
 
     <div class="direction">
-      <LanguageField value={targetLanguage} {uiLanguage} onChange={changeTarget} />
+      <LanguageField value={targetLanguage} onChange={changeTarget} />
       <button
         class="swap"
         type="button"

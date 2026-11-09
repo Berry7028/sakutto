@@ -5,11 +5,10 @@
 
   interface Props {
     settings: Settings;
-    uiLanguage: string;
     onChange: (patch: SettingsPatch) => void;
   }
 
-  let { settings, uiLanguage, onChange }: Props = $props();
+  let { settings, onChange }: Props = $props();
 
   function updateForm(event: Event) {
     const select = event.currentTarget as HTMLSelectElement;
@@ -30,7 +29,6 @@
 <div class="fields">
   <LanguageField
     value={settings.targetLanguage}
-    {uiLanguage}
     onChange={(targetLanguage) => onChange({ targetLanguage })}
   />
 
