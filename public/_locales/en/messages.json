@@ -888,5 +888,17 @@
         "content": "$1"
       }
     }
+  },
+  "pageTitleOptions": {
+    "message": "Sakutto settings"
+  },
+  "pageTitleOnboarding": {
+    "message": "Sakutto setup"
+  },
+  "pageTitleTyped": {
+    "message": "Translate text"
+  },
+  "pageTitleGrant": {
+    "message": "Allow site access"
   }
 }

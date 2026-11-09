@@ -50,7 +50,7 @@ export interface PromptEngineOptions {
 }
 
 function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted) throw new EngineError('aborted', 'The request was aborted.');
+  if (signal.aborted) throw new EngineError('aborted', 'リクエストを中止しました。');
 }
 
 export class PromptEngine implements IdentifiedEngine {
@@ -341,7 +341,7 @@ export class PromptEngine implements IdentifiedEngine {
     if (!tgt) {
       throw new EngineError(
         'unsupported-language',
-        'The translation model does not support the target language.',
+        '翻訳モデルはこの訳先の言語に対応していません。',
       );
     }
 
@@ -349,7 +349,7 @@ export class PromptEngine implements IdentifiedEngine {
     if (options.src !== undefined && !src) {
       throw new EngineError(
         'unsupported-language',
-        'The translation model does not support the source language.',
+        '翻訳モデルはこの訳元の言語に対応していません。',
       );
     }
 
@@ -368,7 +368,7 @@ export class PromptEngine implements IdentifiedEngine {
     const available = this.contextTokens - estimateTokens(prompt) - 8;
 
     if (available < 16) {
-      throw new EngineError('invalid-input', 'The segment does not fit in the context window.');
+      throw new EngineError('invalid-input', 'この区間はコンテキスト長に収まりません。');
     }
 
     let output = '';

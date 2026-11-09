@@ -28,13 +28,13 @@ export interface PromptInput {
 
 function checkText(value: string, field: string): string {
   if (typeof value !== 'string') {
-    throw new EngineError('invalid-input', `${field} must be a string.`);
+    throw new EngineError('invalid-input', `${field} は文字列である必要があります。`);
   }
   if (value.trim().length === 0) {
-    throw new EngineError('invalid-input', `${field} must not be empty.`);
+    throw new EngineError('invalid-input', `${field} を空にすることはできません。`);
   }
   if (value.includes(RESERVED_TOKEN)) {
-    throw new EngineError('invalid-input', `${field} must not contain PFML tokens.`);
+    throw new EngineError('invalid-input', `${field} に PFML のトークンを含めることはできません。`);
   }
   return value;
 }
@@ -48,7 +48,7 @@ export function checkLanguageTag(value: string, field: string): string {
   if (!LANGUAGE_PATTERN.test(normalized)) {
     throw new EngineError(
       'unsupported-language',
-      `${field} must be a lowercase language code such as en, ja or zh-hans.`,
+      `${field} は en、ja、zh-hans のような小文字の言語コードである必要があります。`,
     );
   }
   return normalized;
@@ -77,7 +77,10 @@ export function buildTranslationPrompt(input: PromptInput): string {
   const tgt = checkLanguageTag(input.tgt, 'target_lang');
 
   if (input.form !== undefined && tgt !== 'ja') {
-    throw new EngineError('invalid-input', 'form requires target_lang ja.');
+    throw new EngineError(
+      'invalid-input',
+      'form を使うには target_lang が ja である必要があります。',
+    );
   }
 
   let prompt = `${PFML3.tag}dataset${PFML3.msg}translation`;

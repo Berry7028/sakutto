@@ -32,7 +32,10 @@ function parseRecord(line: string): Record<string, unknown> {
   } catch {
     // Fall through to the error below.
   }
-  throw new EngineError('ollama-failed', 'The Ollama server returned an unreadable stream.');
+  throw new EngineError(
+    'ollama-failed',
+    'Ollama サーバーから読み取れないストリームが返されました。',
+  );
 }
 
 async function httpError(response: Response): Promise<EngineError> {
@@ -49,16 +52,22 @@ async function httpError(response: Response): Promise<EngineError> {
     // The status line is enough when the body cannot be read.
   }
 
+  // Ollama's own `error` field is kept as the detail: it names the missing model or the
+  // rejected origin, which is what the reader has to act on.
   const trimmed = detail.trim().slice(0, 300);
   if (response.status === 404) {
     return new EngineError(
       'ollama-model-missing',
-      trimmed.length > 0 ? trimmed : 'The model is not installed in Ollama.',
+      trimmed.length > 0
+        ? `Ollama にモデルがインストールされていません（${trimmed}）。`
+        : 'Ollama にモデルがインストールされていません。',
     );
   }
   return new EngineError(
     'ollama-failed',
-    trimmed.length > 0 ? trimmed : `Ollama answered HTTP ${String(response.status)}.`,
+    trimmed.length > 0
+      ? `Ollama で翻訳に失敗しました（HTTP ${String(response.status)}・${trimmed}）。`
+      : `Ollama で翻訳に失敗しました（HTTP ${String(response.status)}）。`,
   );
 }
 
@@ -73,7 +82,7 @@ async function readNdjson(
 ): Promise<void> {
   if (!response.ok) throw await httpError(response);
   const body = response.body;
-  if (!body) throw new EngineError('ollama-failed', 'The Ollama response had no body.');
+  if (!body) throw new EngineError('ollama-failed', 'Ollama の応答に本文がありません。');
 
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -103,7 +112,7 @@ async function readNdjson(
   } catch (error) {
     if (signal.aborted) throw abortError();
     if (isAbortError(error)) {
-      throw new EngineError('ollama-unavailable', 'The Ollama stream stopped before it finished.');
+      throw new EngineError('ollama-unavailable', 'Ollama のストリームが途中で止まりました。');
     }
     throw error;
   } finally {
@@ -174,7 +183,10 @@ export class OllamaClient {
         opened.response,
         (record) => {
           if (typeof record.error === 'string' && record.error.length > 0) {
-            throw new EngineError('ollama-failed', record.error);
+            throw new EngineError(
+              'ollama-failed',
+              `Ollama で翻訳に失敗しました（${record.error}）。`,
+            );
           }
           if (typeof record.response === 'string' && record.response.length > 0) {
             if (!request.signal.aborted) request.onToken(record.response);
@@ -240,11 +252,15 @@ export class OllamaClient {
       close();
       if (signal.aborted) throw abortError();
       if (isAbortError(error)) {
-        throw new EngineError('ollama-unavailable', 'The Ollama server did not answer in time.', {
-          cause: error,
-        });
+        throw new EngineError(
+          'ollama-unavailable',
+          'Ollama サーバーが時間内に応答しませんでした。',
+          {
+            cause: error,
+          },
+        );
       }
-      throw new EngineError('ollama-unavailable', 'The Ollama server could not be reached.', {
+      throw new EngineError('ollama-unavailable', 'Ollama サーバーに接続できませんでした。', {
         cause: error,
       });
     }

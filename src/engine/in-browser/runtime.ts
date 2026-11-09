@@ -139,7 +139,7 @@ export const createWllamaRuntime: RuntimeFactory = async (file, selection) => {
   } catch (error) {
     log.stop();
     await wllama.exit().catch(() => undefined);
-    throw new EngineError('model-load-failed', 'The translation model could not be loaded.', {
+    throw new EngineError('model-load-failed', '翻訳モデルを読み込めませんでした。', {
       cause: error,
     });
   }
@@ -149,7 +149,7 @@ export const createWllamaRuntime: RuntimeFactory = async (file, selection) => {
     await wllama.exit().catch(() => undefined);
     throw new EngineError(
       'gpu-unavailable',
-      'WebGPU was requested but llama.cpp did not place the model on a GPU.',
+      'WebGPU を指定しましたが、llama.cpp がモデルを GPU に配置できませんでした。',
     );
   }
 
@@ -177,7 +177,7 @@ export const createWllamaRuntime: RuntimeFactory = async (file, selection) => {
           if (request.signal.aborted) throw abortError();
         } catch (error) {
           if (isAbortError(error) || request.signal.aborted) throw abortError();
-          throw new EngineError('model-load-failed', 'The translation request failed.', {
+          throw new EngineError('model-load-failed', '翻訳リクエストに失敗しました。', {
             cause: error,
           });
         }

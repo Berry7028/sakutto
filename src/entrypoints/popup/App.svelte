@@ -5,7 +5,7 @@
   import { shouldSuggestHighQuality } from '@/engine/model/suggestion';
   import { modelStartBlocked, type EngineStatus, type ModelStatus } from '@/shared/engine-status';
   import { hasLicenseConsent } from '@/shared/agreement';
-  import { currentUiLanguage, t } from '@/shared/i18n';
+  import { t } from '@/shared/i18n';
   import {
     isModelProgressMessage,
     requestEngineStatus,
@@ -38,7 +38,6 @@
 
   let settings = $state<Settings | null>(null);
   let settingsError = $state<SettingsError>(null);
-  let uiLanguage = $state(currentUiLanguage());
   let tabId = $state<number | undefined>(undefined);
   let pageUrl = $state('');
   let host = $state<string | null>(null);
@@ -355,7 +354,6 @@
     <section class="panel" aria-label={t('settingsLabel')}>
       <LanguageField
         value={targetLanguage}
-        {uiLanguage}
         onChange={(language: TargetLanguage) => rememberSite({ targetLanguage: language })}
       />
       <label class="field">

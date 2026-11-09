@@ -115,7 +115,7 @@ async function transfer(request: DownloadRequest, fetchImpl: typeof fetch): Prom
 
   if (response.status === 416) {
     await store.remove(partPath);
-    throw new EngineError('download-failed', 'The server rejected the resume range.', {
+    throw new EngineError('download-failed', 'サーバーが再開位置（Range）を拒否しました。', {
       retryable: false,
     });
   }
@@ -123,7 +123,7 @@ async function transfer(request: DownloadRequest, fetchImpl: typeof fetch): Prom
   if (response.status !== 200 && response.status !== 206) {
     throw new EngineError(
       'download-failed',
-      `The model request failed with HTTP ${String(response.status)}.`,
+      `モデルのダウンロードに失敗しました（HTTP ${String(response.status)}）。`,
       { retryable: response.status >= 500 },
     );
   }
@@ -135,7 +135,7 @@ async function transfer(request: DownloadRequest, fetchImpl: typeof fetch): Prom
   }
 
   if (!response.body) {
-    throw new EngineError('download-failed', 'The model response has no body.');
+    throw new EngineError('download-failed', 'モデルの応答に本文がありません。');
   }
 
   const reader = response.body.getReader();
@@ -176,7 +176,7 @@ async function transfer(request: DownloadRequest, fetchImpl: typeof fetch): Prom
         await reader.cancel();
         await closeWriter();
         await store.remove(partPath);
-        throw new EngineError('download-failed', 'The model is larger than the pinned size.');
+        throw new EngineError('download-failed', 'モデルが固定サイズより大きくなっています。');
       }
 
       await writer.write(value);
@@ -193,7 +193,7 @@ async function transfer(request: DownloadRequest, fetchImpl: typeof fetch): Prom
   if (received !== source.size) {
     throw new EngineError(
       'download-failed',
-      `The model download stopped at ${String(received)} of ${String(source.size)} bytes.`,
+      `モデルのダウンロードが ${String(received)} / ${String(source.size)} バイトで止まりました。`,
     );
   }
 
@@ -229,7 +229,10 @@ export async function downloadModel(request: DownloadRequest): Promise<DownloadR
 
       if (digest !== request.source.sha256) {
         await request.store.remove(request.partPath);
-        throw new EngineError('model-integrity', 'The downloaded model failed its digest check.');
+        throw new EngineError(
+          'model-integrity',
+          'ダウンロードしたモデルのハッシュ検証に失敗しました。',
+        );
       }
 
       await request.store.move(request.partPath, request.finalPath);
@@ -254,5 +257,7 @@ export async function downloadModel(request: DownloadRequest): Promise<DownloadR
   }
 
   if (isEngineError(lastError)) throw lastError;
-  throw new EngineError('download-failed', 'The model download failed.', { cause: lastError });
+  throw new EngineError('download-failed', 'モデルのダウンロードに失敗しました。', {
+    cause: lastError,
+  });
 }

@@ -7,7 +7,7 @@
   import { loadSiteRules, pageHost, saveSiteRule, subscribeSiteRules } from '@/dom/sites';
   import type { EngineCapabilities } from '@/shared/capabilities';
   import type { EngineStatus, OllamaStatus } from '@/shared/engine-status';
-  import { currentUiLanguage, t } from '@/shared/i18n';
+  import { t } from '@/shared/i18n';
   import {
     requestCacheClear,
     requestEngineCapabilities,
@@ -52,7 +52,6 @@
 
   let settings = $state<Settings | null>(null);
   let settingsError = $state<SettingsError>(null);
-  let uiLanguage = $state(currentUiLanguage());
   let rules = $state<Record<string, SiteRule>>({});
   let hostInput = $state('');
   let hostError = $state(false);
@@ -310,7 +309,7 @@
   <section class="panel">
     <h2>{t('settingsLabel')}</h2>
     {#if settings}
-      <SettingsFields {settings} {uiLanguage} onChange={updateSettings} />
+      <SettingsFields {settings} onChange={updateSettings} />
       <p class="muted help">{t('optionsDefaultHint')}</p>
       {#if settingsError === 'save'}
         <p class="error" role="alert">{t('errorSaveSettings')}</p>
@@ -336,7 +335,6 @@
             <div class="site-controls">
               <LanguageField
                 value={rule.targetLanguage ?? settings?.targetLanguage ?? 'en'}
-                {uiLanguage}
                 onChange={(language: TargetLanguage) => {
                   void patchSite(rule.host, { targetLanguage: language });
                 }}
@@ -500,8 +498,8 @@ ollama serve</code
               <p>{t('ollamaSetupOrigin')}</p>
               <pre><code
                   >launchctl setenv OLLAMA_ORIGINS "chrome-extension://mhlbjjijfkoghmcjndgdimhdlfkhadfl"
-# self-built: use the ID on chrome://extensions
-# then restart Ollama</code
+# 自分でビルドした場合は chrome://extensions で表示される ID に置き換えてください
+# そのあと Ollama を再起動します</code
                 ></pre>
             </li>
             <li>

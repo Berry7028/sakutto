@@ -56,6 +56,10 @@ test('probes and translates through Ollama', async () => {
 
     const options = await extension.context.newPage();
     await options.goto(`chrome-extension://${extension.extensionId}/options.html`);
+    // The interface is Japanese on every browser, so the options page a reader sees beside
+    // a live Ollama is the Japanese one.
+    await expect(options.locator('h1')).toHaveText('Sakutto - ローカルAI翻訳');
+    await expect(options.getByRole('heading', { name: 'ローカル Ollama' })).toBeVisible();
 
     const status = await options.evaluate(async () => {
       const chrome = (
@@ -73,6 +77,8 @@ test('probes and translates through Ollama', async () => {
     await commandPage(extension.worker, page, 'toggle');
     await waitTranslated(page);
     await expect(page.locator('#lead')).toHaveAttribute('data-sakutto-engine', 'ollama');
+    // The bar names the engine in Japanese too.
+    await expect(page.locator('sakutto-bar')).toHaveAttribute('aria-label', '翻訳の進み具合');
     await page.close();
   } finally {
     await extension.close();

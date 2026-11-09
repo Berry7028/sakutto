@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { originPattern, pageHost, loadSiteRule } from '@/dom/sites';
+import { t } from '@/shared/i18n';
 import { ensureContentScript } from '@/shared/page-bridge';
 import { requestPageCommand, type PageCommandName } from '@/shared/messages';
 
@@ -48,14 +49,16 @@ export function installPageActions(translations?: PageTranslationCanceller): voi
 
 function installMenus(): void {
   void browser.contextMenus.removeAll().then(() => {
+    // `browser.i18n.getMessage` follows the browser UI language, which would leave an
+    // English menu on an English browser. `t()` always answers in Japanese.
     browser.contextMenus.create({
       id: 'translate-page',
-      title: browser.i18n.getMessage('contextTranslatePage'),
+      title: t('contextTranslatePage'),
       contexts: ['page'],
     });
     browser.contextMenus.create({
       id: 'translate-selection',
-      title: browser.i18n.getMessage('contextTranslateSelection'),
+      title: t('contextTranslateSelection'),
       contexts: ['selection'],
     });
   });
