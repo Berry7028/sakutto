@@ -256,13 +256,13 @@
     "message": "PLaMo コミュニティライセンス（日本語）"
   },
   "licensePlaMoEn": {
-    "message": "PLaMo Community License (English)"
+    "message": "PLaMo コミュニティライセンス（英語）"
   },
   "licenseMit": {
-    "message": "MIT License"
+    "message": "MIT ライセンス"
   },
   "licenseNotice": {
-    "message": "NOTICE"
+    "message": "NOTICE（帰属表示）"
   },
   "licenseModelNote": {
     "message": "モデルの重みは同梱していません。この端末に保存されていないとき、Hugging Face の公式リポジトリから取得します。"
@@ -579,7 +579,7 @@
     "message": "PLaMo Community License（公式・日本語）"
   },
   "plamoOfficialLicenseEn": {
-    "message": "PLaMo Community License (official, English)"
+    "message": "PLaMo コミュニティライセンス（公式・英語）"
   },
   "onboardingUseNow": {
     "message": "Chrome 内蔵の翻訳を使うのは、PLaMo が対応していない言語の組み合わせだけです。"
@@ -888,5 +888,17 @@
         "content": "$1"
       }
     }
+  },
+  "pageTitleOptions": {
+    "message": "Sakutto の設定"
+  },
+  "pageTitleOnboarding": {
+    "message": "Sakutto のセットアップ"
+  },
+  "pageTitleTyped": {
+    "message": "テキストを翻訳"
+  },
+  "pageTitleGrant": {
+    "message": "サイトのアクセスを許可"
   }
 }
