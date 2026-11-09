@@ -100,7 +100,7 @@ export class EngineClient {
 
   async status(): Promise<EngineStatus> {
     const value = await this.request({ type: 'status' }, { timeoutMs: 15_000 });
-    if (!isEngineStatus(value)) throw hostError('The engine host returned an invalid status.');
+    if (!isEngineStatus(value)) throw hostError('翻訳エンジンから不正な状態が返されました。');
     return value;
   }
 
@@ -114,25 +114,25 @@ export class EngineClient {
 
   async deleteModel(modelId: ModelId): Promise<ModelStatus> {
     const value = await this.request({ type: 'model-delete', modelId }, { timeoutMs: 30_000 });
-    if (!isModelStatus(value)) throw hostError('The engine host returned an invalid status.');
+    if (!isModelStatus(value)) throw hostError('翻訳エンジンから不正な状態が返されました。');
     return value;
   }
 
   async useModel(modelId: ModelId): Promise<ModelStatus> {
     const value = await this.request({ type: 'model-use', modelId }, { timeoutMs: 30_000 });
-    if (!isModelStatus(value)) throw hostError('The engine host returned an invalid status.');
+    if (!isModelStatus(value)) throw hostError('翻訳エンジンから不正な状態が返されました。');
     return value;
   }
 
   async warmModel(): Promise<ModelStatus> {
     const value = await this.request({ type: 'model-warm' }, { timeoutMs: 120_000, retry: false });
-    if (!isModelStatus(value)) throw hostError('The engine host returned an invalid status.');
+    if (!isModelStatus(value)) throw hostError('翻訳エンジンから不正な状態が返されました。');
     return value;
   }
 
   async modelStatus(modelId: ModelId): Promise<ModelStatus> {
     const value = await this.request({ type: 'model-status', modelId }, { timeoutMs: 15_000 });
-    if (!isModelStatus(value)) throw hostError('The engine host returned an invalid status.');
+    if (!isModelStatus(value)) throw hostError('翻訳エンジンから不正な状態が返されました。');
     return value;
   }
 
@@ -150,14 +150,15 @@ export class EngineClient {
       { timeoutMs: 60_000, retry: false },
     );
     if (value === null) return null;
-    if (!isMilliseconds(value)) throw hostError('The engine host returned an invalid benchmark.');
+    if (!isMilliseconds(value))
+      throw hostError('翻訳エンジンから不正なベンチマーク結果が返されました。');
     return value.milliseconds;
   }
 
   async probeOllama(): Promise<OllamaStatus> {
     const value = await this.request({ type: 'ollama-probe' }, { timeoutMs: 10_000, retry: false });
     if (!isOllamaStatus(value))
-      throw hostError('The engine host returned an invalid Ollama status.');
+      throw hostError('翻訳エンジンから不正な Ollama の状態が返されました。');
     return value;
   }
 
@@ -180,7 +181,7 @@ export class EngineClient {
         const port = await this.connect();
         if (options.signal.aborted) throw abortError();
         const value = await this.roundTrip(port, { type: 'model-download', requestId, modelId }, 0);
-        if (!isModelStatus(value)) throw hostError('The engine host returned an invalid status.');
+        if (!isModelStatus(value)) throw hostError('翻訳エンジンから不正な状態が返されました。');
         return value;
       } catch (error) {
         if (options.signal.aborted || isAbortError(error)) throw abortError();
@@ -189,7 +190,7 @@ export class EngineClient {
         if (!isHostGone(error) || attempt === DOWNLOAD_ATTACH_ATTEMPTS) {
           throw error instanceof EngineError
             ? error
-            : hostError('The model download failed.', error);
+            : hostError('モデルのダウンロードに失敗しました。', error);
         }
 
         // The download keeps running in the offscreen document; reconnect and attach again.
@@ -203,7 +204,7 @@ export class EngineClient {
 
     throw lastError instanceof EngineError
       ? lastError
-      : hostError('The model download failed.', lastError);
+      : hostError('モデルのダウンロードに失敗しました。', lastError);
   }
 
   async *translate(
@@ -236,7 +237,7 @@ export class EngineClient {
       for await (const chunk of stream) yield chunk;
     } catch (error) {
       if (cancelled || options.signal.aborted || isAbortError(error)) return;
-      throw error instanceof EngineError ? error : hostError('The translation host failed.', error);
+      throw error instanceof EngineError ? error : hostError('翻訳エンジンで失敗しました。', error);
     } finally {
       options.signal.removeEventListener('abort', cancel);
       this.streams.delete(requestId);
@@ -268,7 +269,7 @@ export class EngineClient {
       }
     }
 
-    throw lastError instanceof Error ? lastError : hostError('The translation host failed.');
+    throw lastError instanceof Error ? lastError : hostError('翻訳エンジンで失敗しました。');
   }
 
   /**
@@ -325,7 +326,7 @@ export class EngineClient {
       try {
         port = browser.runtime.connect({ name: ENGINE_HOST_PORT });
       } catch (error) {
-        throw hostError('The translation host could not be opened.', error);
+        throw hostError('翻訳エンジンに接続できませんでした。', error);
       }
 
       port.onMessage.addListener((message: unknown) => this.handleMessage(message));
@@ -352,7 +353,7 @@ export class EngineClient {
         timeoutMs > 0
           ? setTimeout(() => {
               this.pending.delete(message.requestId);
-              reject(hostError('The translation host did not respond in time.'));
+              reject(hostError('翻訳エンジンが時間内に応答しませんでした。'));
             }, timeoutMs)
           : null;
 
@@ -363,7 +364,7 @@ export class EngineClient {
       } catch (error) {
         this.pending.delete(message.requestId);
         if (timer) clearTimeout(timer);
-        reject(hostError('The translation host is not reachable.', error));
+        reject(hostError('翻訳エンジンに到達できませんでした。', error));
       }
     });
   }
@@ -415,7 +416,7 @@ export class EngineClient {
 
   private handleDisconnect(): void {
     this.port = null;
-    this.failAll(hostError('The translation host was closed.'));
+    this.failAll(hostError('翻訳エンジンの接続が閉じられました。'));
   }
 
   private dropPort(): void {

@@ -64,7 +64,7 @@ function decodeChunk(value: unknown): string {
 }
 
 function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted) throw new EngineError('aborted', 'The request was aborted.');
+  if (signal.aborted) throw new EngineError('aborted', 'リクエストを中止しました。');
 }
 
 export class ChromeTranslatorEngine implements IdentifiedEngine {
@@ -116,14 +116,14 @@ export class ChromeTranslatorEngine implements IdentifiedEngine {
     options: TranslateOptions,
   ): AsyncGenerator<TranslationChunk> {
     if (!this.translator) {
-      throw new EngineError('chrome-unavailable', 'The built-in translator is not available.');
+      throw new EngineError('chrome-unavailable', 'Chrome の内蔵翻訳を利用できません。');
     }
 
     const target = canonicalChromeLanguage(options.tgt);
     if (!target) {
       throw new EngineError(
         'unsupported-language',
-        'The built-in translator does not support the target language.',
+        'Chrome の内蔵翻訳はこの訳先の言語に対応していません。',
       );
     }
 
@@ -141,7 +141,7 @@ export class ChromeTranslatorEngine implements IdentifiedEngine {
       if (!canonicalDetected) {
         throw new EngineError(
           'unsupported-language',
-          'The built-in translator cannot determine the source language.',
+          'Chrome の内蔵翻訳では訳元の言語を判定できませんでした。',
         );
       }
       sourceLanguage = toChromeLanguage(canonicalDetected);
@@ -169,7 +169,7 @@ export class ChromeTranslatorEngine implements IdentifiedEngine {
       } catch (error) {
         if (isAbortError(error) || options.signal.aborted) return;
         if (error instanceof EngineError) throw error;
-        throw new EngineError('chrome-not-ready', 'The built-in translator failed.', {
+        throw new EngineError('chrome-not-ready', 'Chrome の内蔵翻訳で失敗しました。', {
           cause: error,
         });
       }
@@ -247,20 +247,20 @@ export class ChromeTranslatorEngine implements IdentifiedEngine {
     const created = (async () => {
       const translator = this.translator;
       if (!translator) {
-        throw new EngineError('chrome-unavailable', 'The built-in translator is not available.');
+        throw new EngineError('chrome-unavailable', 'Chrome の内蔵翻訳を利用できません。');
       }
 
       const availability = await this.availabilityForPair(sourceLanguage, targetLanguage);
       if (availability === 'unavailable') {
         throw new EngineError(
           'chrome-unavailable',
-          'The built-in translator does not support this language pair.',
+          'Chrome の内蔵翻訳はこの言語の組み合わせに対応していません。',
         );
       }
       if (availability !== 'available') {
         throw new EngineError(
           'chrome-not-ready',
-          'The built-in language pack is not installed yet.',
+          'Chrome の言語パックがまだインストールされていません。',
         );
       }
 

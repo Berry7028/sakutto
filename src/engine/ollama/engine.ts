@@ -76,13 +76,13 @@ class OllamaRunner implements CompletionRunner {
       if (cached.status.state === 'unreachable') {
         throw new EngineError(
           'ollama-unavailable',
-          `The Ollama server at ${config.url} did not answer.`,
+          `${config.url} の Ollama サーバーが応答しませんでした。`,
         );
       }
       if (cached.status.state === 'model-missing') {
         throw new EngineError(
           'ollama-model-missing',
-          `Ollama does not have the model ${config.model}.`,
+          `Ollama にモデル ${config.model} がありません。`,
         );
       }
     }

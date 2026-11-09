@@ -412,13 +412,13 @@ export class EngineHost {
         if (status.state === 'model-missing') {
           throw new EngineError(
             'ollama-model-missing',
-            `Ollama does not have the model ${status.model}.`,
+            `Ollama にモデル ${status.model} がありません。`,
           );
         }
         if (status.state !== 'ready') {
           throw new EngineError(
             'ollama-unavailable',
-            `The Ollama server at ${status.url} did not answer.`,
+            `${status.url} の Ollama サーバーが応答しませんでした。`,
           );
         }
         this.respond(port, requestId, await services.manager.status(this.activeModelId));

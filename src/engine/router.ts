@@ -83,8 +83,8 @@ export class RoutingEngine {
       throw new EngineError(
         choice === 'chrome' ? 'chrome-unavailable' : 'ollama-unavailable',
         choice === 'chrome'
-          ? 'The built-in translator is not available.'
-          : 'The local Ollama server is not configured.',
+          ? 'Chrome の内蔵翻訳を利用できません。'
+          : 'ローカルの Ollama サーバーが設定されていません。',
       );
     }
 
@@ -108,7 +108,7 @@ export class RoutingEngine {
 
     throw new EngineError(
       'unsupported-language',
-      'No available engine supports this language pair.',
+      'この言語の組み合わせに対応する翻訳エンジンがありません。',
     );
   }
 }

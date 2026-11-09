@@ -179,7 +179,7 @@ export class ModelManager {
 
       const status = await this.status(modelId);
       if (status.state !== 'ready') {
-        throw new EngineError('model-missing', 'The translation model is not downloaded yet.');
+        throw new EngineError('model-missing', '翻訳モデルがまだダウンロードされていません。');
       }
 
       this.notify({ ...status, state: 'loading' });
@@ -287,10 +287,7 @@ export class ModelManager {
     const existing = await this.store.size(this.partPath(modelId));
     const needed = Math.max(0, entry.size - existing) + FREE_SPACE_MARGIN;
     if (estimate.quota - estimate.usage < needed) {
-      throw new EngineError(
-        'storage-insufficient',
-        'There is not enough free storage for the translation model.',
-      );
+      throw new EngineError('storage-insufficient', '翻訳モデルを保存する空き容量が足りません。');
     }
   }
 

@@ -37,7 +37,7 @@ export async function* translateViaBackground(
   };
 
   const onDisconnect = (): void => {
-    stream.fail(new EngineError('offscreen-unavailable', 'The translation connection closed.'));
+    stream.fail(new EngineError('offscreen-unavailable', '翻訳エンジンとの接続が切れました。'));
   };
 
   port.onMessage.addListener(onMessage);
@@ -66,7 +66,7 @@ export async function* translateViaBackground(
     if (options.signal.aborted || isAbortError(error)) return;
     throw error instanceof EngineError
       ? error
-      : new EngineError('offscreen-unavailable', 'The translation connection failed.', {
+      : new EngineError('offscreen-unavailable', '翻訳エンジンとの通信に失敗しました。', {
           cause: error,
         });
   } finally {
