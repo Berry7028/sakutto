@@ -52,7 +52,7 @@ Productivity。ウェブページを翻訳する用途に合います。
 
 ### 言語
 
-ストアの掲載言語は日本語を主にし、英語も追加します。拡張機能の `default_locale` は `en` で、UI の文言は英語と日本語です。掲載言語の欄に、翻訳できる 53 言語を並べる欄ではありません。53 は PLaMo 3 Translate の対応言語数で、`src/shared/languages.ts` の `SUPPORTED_LANGUAGES` です。
+ストアの掲載言語は日本語を主にし、英語も追加します。拡張機能の `default_locale` は `en` ですが、画面の文言はブラウザの表示言語にかかわらず日本語です（`src/shared/i18n.ts` が常に `ja` の文言を引きます）。`_locales` の英語版は名前と概要、および文言のキー集合の基準として残しています。掲載言語の欄に、翻訳できる 53 言語を並べる欄ではありません。53 は PLaMo 3 Translate の対応言語数で、`src/shared/languages.ts` の `SUPPORTED_LANGUAGES` です。
 
 ### 単一の目的
 
@@ -184,7 +184,7 @@ Productivity. It fits an extension whose purpose is translating web pages.
 
 ### Language
 
-Add Japanese as the primary store language and English as well. The extension `default_locale` is `en`, and the UI strings exist for `en` and `ja`. The store language field is not the list of 53 translation languages.
+Add Japanese as the primary store language and English as well. The extension `default_locale` is `en`, but the interface is written in Japanese whatever the browser's language is: `src/shared/i18n.ts` always reads the `ja` catalogue. The English catalogue stays as the store name and summary and as the key set. The store language field is not the list of 53 translation languages.
 
 ### Single purpose
 
