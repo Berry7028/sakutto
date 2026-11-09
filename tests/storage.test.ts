@@ -17,6 +17,8 @@ vi.mock('wxt/browser', () => {
 
   return {
     browser: {
+      // The browser says English; the interface is Japanese regardless, so the default
+      // target language comes from `currentUiLanguage()` and not from this value.
       i18n: {
         getUILanguage: () => 'en-US',
         getMessage: () => '',
@@ -64,6 +66,17 @@ describe('settings storage', () => {
     expect(first).toMatchObject({ targetLanguage: 'ko', form: 'polite' });
     expect(second).toMatchObject({ targetLanguage: 'ko', form: 'plain' });
     expect(await loadSettings()).toMatchObject({ targetLanguage: 'ko', form: 'plain' });
+  });
+
+  /**
+   * A fresh profile has no stored settings, so the defaults are written on first read. The
+   * target language those defaults carry is the interface language — Japanese — even though
+   * the browser was launched in English. Reading it from `getUILanguage()` would leave an
+   * English browser translating into English.
+   */
+  it('defaults the target language to Japanese on an English browser', async () => {
+    const settings = await loadSettings();
+    expect(settings.targetLanguage).toBe('ja');
   });
 
   it('propagates storage failures to the caller', async () => {

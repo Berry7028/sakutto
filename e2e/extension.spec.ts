@@ -3,6 +3,14 @@ import { loadExtension } from './extension';
 
 const EXTENSION_ID_PATTERN = /^[a-p]{32}$/;
 
+/** The four pages every build ships, and the title each one puts on its tab. */
+const PAGES = [
+  { path: 'popup.html', title: 'Sakutto' },
+  { path: 'options.html', title: 'Sakutto の設定' },
+  { path: 'onboarding.html', title: 'Sakutto のセットアップ' },
+  { path: 'typed.html', title: 'テキストを翻訳' },
+] as const;
+
 test.describe('built extension', () => {
   test('starts the extension service worker', async () => {
     const extension = await loadExtension('en-US');
@@ -13,52 +21,52 @@ test.describe('built extension', () => {
     }
   });
 
-  test('renders the popup, options, typed and onboarding pages in English', async () => {
+  /**
+   * The interface is Japanese only. A browser set to English must still be shown the
+   * Japanese pages: nothing in the UI reads `chrome.i18n.getUILanguage()`, so the locale
+   * Chromium was launched with cannot change a word of it.
+   */
+  test('renders the popup, options, typed and onboarding pages in Japanese for an English browser', async () => {
     const extension = await loadExtension('en-US');
     try {
-      const pages = ['popup.html', 'options.html', 'onboarding.html', 'typed.html'];
-
-      for (const path of pages) {
+      for (const { path, title } of PAGES) {
         const page = await extension.context.newPage();
         await page.goto(`chrome-extension://${extension.extensionId}/${path}`);
-        await expect(page.locator('h1')).toHaveText('Sakutto - Local AI translation');
+        await expect(page.locator('h1')).toHaveText('Sakutto - ローカルAI翻訳');
+        await expect(page).toHaveTitle(title);
+        // The document language follows the interface language, not the browser's.
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
         if (path === 'onboarding.html') {
           await expect(page.getByRole('checkbox')).toHaveCount(0);
           await expect(
-            page.getByRole('button', { name: 'Agree to the license and start' }),
+            page.getByRole('button', { name: 'ライセンスに同意して開始' }),
           ).toBeEnabled();
           await expect(page.locator('#start-notice')).toHaveText(
-            'Pressing "Agree to the license and start" means you agree to the PLaMo Community License.',
+            '「ライセンスに同意して開始」を押すと、PLaMo Community Licenseに同意したことになります。',
           );
           // The clearer structure: three short parts, then the age line, then the links.
-          await expect(page.getByRole('heading', { name: 'PLaMo terms of use' })).toBeVisible();
-          await expect(
-            page.getByRole('heading', { name: 'Personal and academic use' }),
-          ).toBeVisible();
-          await expect(
-            page.getByRole('heading', { name: 'Work and commercial use' }),
-          ).toBeVisible();
-          await expect(
-            page.getByRole('heading', { name: 'When the conditions are not met' }),
-          ).toBeVisible();
-          await expect(page.getByText('Other license information')).toBeAttached();
+          await expect(page.getByRole('heading', { name: 'PLaMoの利用条件' })).toBeVisible();
+          await expect(page.getByRole('heading', { name: '個人・学術目的での利用' })).toBeVisible();
+          await expect(page.getByRole('heading', { name: '仕事・商業目的での利用' })).toBeVisible();
+          await expect(page.getByRole('heading', { name: '条件を満たさない場合' })).toBeVisible();
+          await expect(page.getByText('その他のライセンス情報')).toBeAttached();
           const details = page.locator('details');
           await details.locator('summary').click();
-          await expect(details.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute(
+          await expect(details.getByRole('link', { name: 'プライバシーポリシー' })).toHaveAttribute(
             'href',
             'https://jammaru.com/sakutto/privacy/',
           );
-          await expect(details.getByRole('link', { name: 'Source code' })).toHaveAttribute(
+          await expect(details.getByRole('link', { name: 'ソースコード' })).toHaveAttribute(
             'href',
             'https://github.com/jammaru/sakutto',
           );
         }
         if (path === 'options.html') {
-          await expect(page.getByRole('link', { name: 'Privacy policy' })).toHaveAttribute(
+          await expect(page.getByRole('link', { name: 'プライバシーポリシー' })).toHaveAttribute(
             'href',
             'https://jammaru.com/sakutto/privacy/',
           );
-          await expect(page.getByRole('link', { name: 'Source code' })).toHaveAttribute(
+          await expect(page.getByRole('link', { name: 'ソースコード' })).toHaveAttribute(
             'href',
             'https://github.com/jammaru/sakutto',
           );
@@ -66,6 +74,10 @@ test.describe('built extension', () => {
         if (path === 'typed.html') {
           await expect(page.locator('textarea')).toBeVisible();
         }
+        // No English copy survives on any of the four pages.
+        await expect(page.getByText(/Agree to the license|Privacy policy|Source code/)).toHaveCount(
+          0,
+        );
         await page.close();
       }
     } finally {
@@ -89,12 +101,12 @@ test.describe('built extension', () => {
   test('renders the pages in Japanese for a Japanese browser', async () => {
     const extension = await loadExtension('ja');
     try {
-      const pages = ['popup.html', 'options.html', 'onboarding.html', 'typed.html'];
-
-      for (const path of pages) {
+      for (const { path, title } of PAGES) {
         const page = await extension.context.newPage();
         await page.goto(`chrome-extension://${extension.extensionId}/${path}`);
         await expect(page.locator('h1')).toHaveText('Sakutto - ローカルAI翻訳');
+        await expect(page).toHaveTitle(title);
+        await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
         if (path === 'onboarding.html') {
           await expect(page.getByRole('checkbox')).toHaveCount(0);
           await expect(

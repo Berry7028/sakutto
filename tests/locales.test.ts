@@ -40,6 +40,112 @@ function placeholderNames(entry: MessageEntry | undefined): string[] {
   return Object.keys(entry?.placeholders ?? {}).sort();
 }
 
+/**
+ * Latin-script words the Japanese catalogue is allowed to contain.
+ *
+ * The interface is Japanese only, so an English sentence that survives in `ja` is a bug:
+ * the reader sees it and there is no other locale to fall back to. These words are not
+ * English copy, though — they are product names, technical terms, commands, file names,
+ * units, keyboard keys, language codes and the `$NAME$` tokens Chrome interpolates. The
+ * list is explicit so that a new English phrase has to be added here on purpose.
+ */
+const ALLOWED_LATIN: ReadonlySet<string> = new Set([
+  // Product and vendor names.
+  'Sakutto',
+  'PLaMo',
+  'Chrome',
+  'Google',
+  'Ollama',
+  'Hugging',
+  'Face',
+  'PFN',
+  'Preferred',
+  'Networks',
+  'Built',
+  'with',
+  'Community',
+  'License',
+  'MIT',
+  'NOTICE',
+  'Windows',
+  'Linux',
+  'Mac',
+  // Technical terms and hardware.
+  'AI',
+  'LLM',
+  'CPU',
+  'GPU',
+  'WebGPU',
+  'CDN',
+  'URL',
+  'HTTP',
+  'GGUF',
+  'CSV',
+  'PC',
+  'MB',
+  'Mbps',
+  'GB',
+  'ID',
+  'Q4_K_M',
+  'n_parallel',
+  'tokens',
+  'tok',
+  's',
+  // Model and file identifiers.
+  'hf.co',
+  'pfnet',
+  'plamo',
+  'translate',
+  'b',
+  'huggingface.co',
+  'OLLAMA_ORIGINS',
+  'docs',
+  'OLLAMA.md',
+  'chrome',
+  'extension',
+  'mhlbjjijfkoghmcjndgdimhdlfkhadfl',
+  // Commands a reader types.
+  'ollama',
+  'list',
+  'pull',
+  'serve',
+  // Keyboard keys.
+  'Alt',
+  'Option',
+  'Ctrl',
+  'Enter',
+  'A',
+  'B',
+  'S',
+  // Language codes and the `$NAME$` placeholders, which are upper case by convention.
+  'BLOCKS',
+  'COUNT',
+  'DONE',
+  'HOST',
+  'LANG',
+  'LANGUAGE',
+  'LANGUAGES',
+  'LIMIT',
+  'MODEL',
+  'PERCENT',
+  'RECEIVED',
+  'SEGMENTS',
+  'STATUS',
+  'TOKENS',
+  'TOTAL',
+]);
+
+/**
+ * Latin-script tokens in a message, read as words rather than as letter runs.
+ *
+ * A token ends at whitespace, punctuation, or a slash, so `tok/s` is two words (`tok`, `s`)
+ * and a trailing colon is not part of the word. `hf.co` and `docs/OLLAMA.md` stay whole
+ * because a dot between letters is part of a host or a file name.
+ */
+function latinWords(message: string): string[] {
+  return message.match(/[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*/g) ?? [];
+}
+
 describe('locale messages', () => {
   const en = readMessages('en');
   const ja = readMessages('ja');
@@ -318,5 +424,33 @@ describe('locale messages', () => {
     // from both locales rather than sitting unused.
     expect(en).not.toHaveProperty('onboardingTryNow');
     expect(ja).not.toHaveProperty('onboardingTryNow');
+  });
+
+  /**
+   * The interface is Japanese only: `t()` always reads this catalogue, and the English one
+   * is only the key set and a fallback. A sentence left in English here is therefore shown
+   * to every user, with nothing behind it to fall back to. The check is a word allow list
+   * rather than "contains no ASCII", because the Japanese copy legitimately names products
+   * (PLaMo, Chrome), commands (`ollama pull`), units and keys.
+   */
+  it('leaves no English copy in the Japanese catalogue', () => {
+    const offenders: string[] = [];
+
+    for (const [key, entry] of Object.entries(ja)) {
+      const unknown = latinWords(entry.message).filter((word) => !ALLOWED_LATIN.has(word));
+      if (unknown.length > 0) offenders.push(`${key}: ${unknown.join(', ')}`);
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  /**
+   * The allow list must not outlive the copy it excuses. A word that no message uses any
+   * more is dead weight, and a stale entry would silently permit the same word later.
+   */
+  it('keeps the allow list to words the Japanese catalogue actually uses', () => {
+    const used = new Set(Object.values(ja).flatMap((entry) => latinWords(entry.message)));
+    const unused = [...ALLOWED_LATIN].filter((word) => !used.has(word));
+    expect(unused).toEqual([]);
   });
 });

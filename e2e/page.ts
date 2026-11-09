@@ -2,7 +2,17 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import type { Page, Worker } from '@playwright/test';
 
 export const FIXTURE_ORIGIN = 'http://127.0.0.1:4173';
-export const MARKER = '§en§';
+
+/**
+ * The fake engine's marker for the language a block was translated into.
+ *
+ * The interface is Japanese, so a fresh profile defaults the target to `ja` and an English
+ * fixture is translated into Japanese: the marker is `§ja§`. A fixture that is already
+ * Japanese is translated into English instead (`§en§`), because the page is never
+ * translated into itself. The marker is therefore per fixture, not one constant.
+ */
+export const MARKER_JA = '§ja§';
+export const MARKER_EN = '§en§';
 
 interface ExtensionChrome {
   tabs: {
@@ -27,7 +37,7 @@ export async function resetExtensionStorage(worker: Worker): Promise<void> {
       siteRules: {},
       settings: {
         schemaVersion: 1,
-        targetLanguage: 'en',
+        targetLanguage: 'ja',
         form: 'polite',
         display: 'replace',
         consent: null,

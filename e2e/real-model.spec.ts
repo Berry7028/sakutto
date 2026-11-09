@@ -17,6 +17,9 @@ test('translates with the local PLaMo model', async () => {
     await waitTranslated(page);
     await expect(page.locator('#lead')).toHaveAttribute('data-sakutto-engine', 'plamo');
     await expect(page.locator('#lead')).not.toContainText('§en§');
+    // The bar is the interface's own copy, so it is Japanese even though the browser was
+    // launched in English.
+    await expect(page.locator('sakutto-bar')).toHaveAttribute('aria-label', '翻訳の進み具合');
     expect(extension.denied).toEqual([]);
     await page.close();
   } finally {
